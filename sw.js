@@ -1,0 +1,42 @@
+const SHELL = 'jt-shell-v1', AUDIO = 'jt-audio-v1';
+const SHELL_FILES = ['./','index.html','style.css','app.js','data.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','icons/maskable-512.png'];
+self.window = self; importScripts('data.js');
+const AUDIO_FILES = self.JT.audio.flatMap(a => [`audio/${a}.mp3`, `audio/${a}_s.mp3`]);
+async function cacheAudio(){
+  const c = await caches.open(AUDIO);
+  for(let i = 0; i < AUDIO_FILES.length; i += 10)
+    await Promise.allSettled(AUDIO_FILES.slice(i, i+10).map(async u => { if(!(await c.match(u))){ const r = await fetch(u, {cache:'no-cache'}); if(r.ok) await c.put(u, r); } }));
+}
+self.addEventListener('install', e => {
+  e.waitUntil(caches.open(SHELL).then(c => c.addAll(SHELL_FILES)).then(() => cacheAudio()).then(() => self.skipWaiting()));
+});
+self.addEventListener('activate', e => {
+  e.waitUntil((async () => {
+    for(const k of await caches.keys()) if(![SHELL, AUDIO].includes(k)) await caches.delete(k);
+    await self.clients.claim();
+    cacheAudio().catch(() => {});
+  })());
+});
+async function rangeResponse(req, res){
+  const range = req.headers.get('range'); if(!range) return res;
+  const buf = await res.arrayBuffer(); const m = /bytes=(\d*)-(\d*)/.exec(range) || [];
+  const start = m[1] ? +m[1] : 0, end = m[2] ? Math.min(+m[2], buf.byteLength-1) : buf.byteLength-1;
+  return new Response(buf.slice(start, end+1), {status:206, statusText:'Partial Content', headers:{'Content-Type':'audio/mpeg','Content-Range':`bytes ${start}-${end}/${buf.byteLength}`,'Content-Length':String(end-start+1),'Accept-Ranges':'bytes'}});
+}
+self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  if(e.request.method !== 'GET' || url.origin !== location.origin) return;
+  if(url.pathname.endsWith('.mp3')){
+    e.respondWith((async () => {
+      const c = await caches.open(AUDIO); const key = url.pathname.replace(/^.*\/audio\//, 'audio/');
+      const hit = await c.match(key); if(hit) return rangeResponse(e.request, hit);
+      try{ const full = await fetch(url.pathname, {credentials:'same-origin', cache:'no-cache'}); if(full.ok && full.status===200){ await c.put(key, full.clone()); return rangeResponse(e.request, full); } }catch(err){}
+      return fetch(e.request);
+    })()); return;
+  }
+  e.respondWith((async () => {
+    const c = await caches.open(SHELL); const hit = await c.match(e.request, {ignoreSearch:true});
+    const net = fetch(e.request).then(r => { if(r.ok) c.put(e.request, r.clone()); return r; }).catch(() => null);
+    return hit || (await net) || (await c.match('index.html'));
+  })());
+});
