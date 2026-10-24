@@ -3,6 +3,8 @@ import sys, os, json, re
 T = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, T)
 sys.path.insert(0, '/workspace/bunka-nihongo-app/tools')
 from jt_content import CATS
+from jt_rp import RP, PATTERNS, PARTNER
+from romaji import romaji
 ROOT = os.path.join(T, '..')
 def build():
     cats = []; lines_all = []
@@ -32,9 +34,21 @@ def build():
         cats.append(dict(id=c['id'], icon=c['icon'], t=c['t'], phrases=phrases, dialogues=dls))
     return cats, lines_all
 cats, AL = build()
+# 🗣 開口練習：每句台詞的提示＋另外兩種說法（音檔 audio/<a>-r_<k>.mp3，聲音跟原句同一個角色）
+RPD = {ja: [cue, [[a[0], a[1], romaji(a[1]), a[2]] for a in alts]] for ja, (cue, alts) in RP.items()}
+RALT = []   # [{id, ja, v}] for gen.py
+_seen = set()
+for c in cats:
+    for d in c['dialogues']:
+        d['pn'] = PARTNER.get(d['id'], '對方')
+        for l in d['lines']:
+            if l['a'] in _seen: continue
+            _seen.add(l['a'])
+            for k, a in enumerate(RP[l['ja']][1]): RALT.append(dict(id=f"{l['a']}-r_{k}", ja=a[0], kana=a[1], v=l['r']))
 if __name__ == '__main__':
     audio = sorted({x['id'] for x in AL})
-    data = dict(cats=cats, audio=audio)
+    files = [f'audio/{a}{s}.mp3' for a in audio + [x['id'] for x in RALT] for s in ('', '_s')]
+    data = dict(cats=cats, audio=audio, rp=RPD, pat=[list(p) for p in PATTERNS], files=files)
     open(os.path.join(ROOT, 'data.js'), 'w').write('window.JT=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
     print('phrases', sum(len(c['phrases']) for c in cats), 'dialogues', sum(len(c['dialogues']) for c in cats),
-          'dlg lines', sum(len(d['lines']) for c in cats for d in c['dialogues']), 'audio clips', len(audio))
+          'dlg lines', sum(len(d['lines']) for c in cats for d in c['dialogues']), 'audio clips', len(audio), 'rp alts', len(RALT), 'files', len(files))
