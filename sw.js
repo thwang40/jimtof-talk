@@ -1,8 +1,12 @@
-const SHELL = 'jt-shell-v2', AUDIO = 'jt-audio-v2';
+const SHELL = 'jt-shell-v3', AUDIO = 'jt-audio-v3';
 const SHELL_FILES = ['./','index.html','style.css','app.js','data.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','icons/maskable-512.png'];
 self.window = self; importScripts('data.js');
 // 全部音檔：原句＋開口練習的另外兩種說法（1x 與 0.7x），清單由 tools/build.py 產生
 const AUDIO_FILES = self.JT.files;
+// 日本行每日的照片（WebP，已壓縮）：背景存進 SHELL，離線也看得到
+const IMG_FILES = self.JT.imgs || [];
+async function cacheImgs(){ const c = await caches.open(SHELL);
+  await Promise.allSettled(IMG_FILES.map(async u => { if(!(await c.match(u))){ const r = await fetch(u, {cache:'no-cache'}); if(r.ok) await c.put(u, r); } })); }
 async function cacheAudio(){
   const c = await caches.open(AUDIO);
   for(let i = 0; i < AUDIO_FILES.length; i += 10)
@@ -13,6 +17,11 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
+    // v2 -> v3：只有新增音檔（日本行每日），舊的全部搬過來，不用重新下載
+    if(await caches.has('jt-audio-v2')){
+      const o = await caches.open('jt-audio-v2'), n = await caches.open(AUDIO);
+      for(const r of await o.keys()){ if(!(await n.match(r))) await n.put(r, await o.match(r)); }
+    }
     // v1 -> v2：1x 原句音檔沒變，搬過來；_s（慢速）改成 0.7x 重新產生，不搬
     if(await caches.has('jt-audio-v1')){
       const o = await caches.open('jt-audio-v1'), n = await caches.open(AUDIO);
@@ -20,7 +29,7 @@ self.addEventListener('activate', e => {
     }
     for(const k of await caches.keys()) if(![SHELL, AUDIO].includes(k)) await caches.delete(k);
     await self.clients.claim();
-    cacheAudio().catch(() => {});
+    cacheImgs().catch(() => {}); cacheAudio().catch(() => {});
   })());
 });
 // iOS Safari 用 Range 要音檔：從快取回 206

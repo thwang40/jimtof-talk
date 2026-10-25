@@ -16,6 +16,7 @@ J.cats.forEach(c => { CAT[c.id] = c;
   c.phrases.forEach((p, i) => ITEM[p.id] = Object.assign({key:p.id, r:'me', a:p.id, cat:c.id, n:i}, p));
   c.dialogues.forEach(d => { d.cat = c.id; DLG[d.id] = d; d.lines.forEach((l,i) => ITEM[d.id+':'+i] = Object.assign({key:d.id+':'+i, cat:c.id, d:d.id, n:i}, l)); }); });
 const ME = '王';
+const DAYS = J.cats.filter(c => c.day);
 const who = it => it.r === 'me' ? ME : (it.d ? DLG[it.d].pn : '對方');
 const WHO_COLOR = {me:'#1d6434', other:'#1b5fa8'};
 const wcol = it => it.r === 'me' ? WHO_COLOR.me : WHO_COLOR.other;
@@ -112,7 +113,7 @@ function maskHTML(t){ const n = Math.max(3, [...t].length), per = 22; let h = ''
   return h + `<span class="sr">（點一下顯示日文）</span>`; }
 function textBody(it, lv){
   if(lv < 1) return maskHTML(it.ja);
-  return `<div class="ja">${hiJa(it.ja)}</div>${S.showKana?`<div class="kana">${esc(it.kana)}</div>`:''}${S.showRomaji?`<div class="ro">${esc(it.ro)}</div>`:''}` +
+  return `<div class="ja">${hiJa(it.ja)}</div>${S.showKana?`<div class="kana">${esc(it.kana)}</div>`:''}${S.showRomaji?`<div class="ro">${esc(it.ro)}</div>`:''}${it.L?`<div class="les">📘 ${esc(it.L)}</div>`:''}` +
     (lv >= 2 ? `<div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}` : ''); }
 // 書本式一行：左＝說話者（句子頁＝編號），中＝台詞（先遮住），右＝🔊 🔁 🎙 🙋
 function rowHTML(it, opts={}){
@@ -151,7 +152,8 @@ function srcHTML(key){ const it = ITEM[key], c = CAT[it.cat], d = it.d ? DLG[it.
 function crumb(parts){ return `<div class="crumb"><a href="#/">首頁</a>${parts.map(p => ' › ' + (p[1]?`<a href="${p[1]}">${esc(p[0])}</a>`:esc(p[0]))).join('')}</div>`; }
 function renderSide(cur){
   $('#side').innerHTML = searchFormHTML('', 'sside') + `<a href="#/" class="${cur==='home'?'cur':''}">🏠 首頁</a><a href="#/review" class="${cur==='review'?'cur':''}">📝 複習清單（${revCount()}）</a>` +
-    J.cats.map(c => { const n = c.dialogues.filter(d => S.done[d.id]).length; return `<a href="#/c/${c.id}" class="${cur===c.id?'cur':''}">${c.icon} ${esc(c.t)}<small>${c.phrases.length} 句・${c.dialogues.length} 段對話・${n}/${c.dialogues.length} 完成</small></a>`; }).join('') +
+    J.cats.map((c, i) => { const n = c.dialogues.filter(d => S.done[d.id]).length; const hd = c.day && !(J.cats[i-1]||{}).day ? `<div class="sidehd">🗾 日本行每日</div>` : '';
+      return hd + `<a href="#/c/${c.id}" class="${cur===c.id?'cur':''}">${c.icon} ${esc(c.t)}<small>${c.day?`📷 ${c.scenes.reduce((a,x)=>a+x.imgs.length,0)} 張照片・`:''}${c.phrases.length} 句・${c.dialogues.length} 段對話・${n}/${c.dialogues.length} 完成</small></a>`; }).join('') +
     `<a href="#/sh/all" class="${cur==='sh'?'cur':''}">🔁 全部跟讀</a>`; }
 
 /* ---------- views ---------- */
@@ -170,8 +172,11 @@ function viewHome(){
     <a class="btn alt" style="text-decoration:none" href="#/review">📝 複習清單（${revCount()}）</a>
     <span class="small mute">已練習對話 ${doneD}/${nD}</span>
   </div>
-  <div class="grid">${J.cats.map(c => { const qs = S.quiz[c.id], n = c.dialogues.filter(d => S.done[d.id]).length;
+  <div class="grid">${J.cats.filter(c => !c.day).map(c => { const qs = S.quiz[c.id], n = c.dialogues.filter(d => S.done[d.id]).length;
     return `<a class="card" href="#/c/${c.id}"><div class="ic">${c.icon}</div><div class="ltitle">${esc(c.t)}</div><div class="small mute">${c.phrases.length} 句・${c.dialogues.length} 段對話${qs!=null?`・測驗 ${qs}%`:''}</div><div class="bar"><i style="width:${Math.round(n/c.dialogues.length*100)}%"></i></div></a>`; }).join('')}</div>
+  ${DAYS.length ? `<h2>🗾 日本行每日</h2><p class="small mute">出差期間每天一個單元：當天照片裡的日文＋實用句＋小對話，每個句型都標了《文化初級日本語》第幾課。</p>
+  <div class="dlist">${DAYS.slice().reverse().map(c => { const n = c.dialogues.filter(d => S.done[d.id]).length;
+    return `<a class="card daycard" href="#/c/${c.id}"><div class="ltitle">${c.icon} ${esc(c.t)}</div><div class="small mute">📷 ${c.scenes.reduce((a,x)=>a+x.imgs.length,0)} 張照片・${c.scenes.length} 個場景・${c.phrases.length} 句・${c.dialogues.length} 段對話</div><div class="bar"><i style="width:${Math.round(n/c.dialogues.length*100)}%"></i></div></a>`; }).join('')}</div>` : ''}
   <h2>練習方式</h2>
   <div class="card small" style="display:grid;gap:6px">
     <div>👂 <b>聽力優先</b>：文字先蓋住，聽 2–3 次再點開。速度 0.7x／1x（預設 1x）。每一段也可以按「👁 顯示全文」。</div>
@@ -187,18 +192,19 @@ function viewHome(){
   <div class="card small">
     <div><b>iPhone（Safari）</b>：分享 →「加入主畫面」。</div>
     <div><b>Android（Chrome）</b>：右上「⋮」→「加到主畫面／安裝應用程式」。</div>
-    <div class="mute" style="margin-top:4px">第一次開啟後音檔會自動存到裝置；到 ⚙︎ 設定按「下載全部離線資料」可確認全部存好（約 12 MB）。語音辨識需要網路。</div>
+    <div class="mute" style="margin-top:4px">第一次開啟後音檔會自動存到裝置；到 ⚙︎ 設定按「下載全部離線資料」可確認全部存好（約 17 MB）。語音辨識需要網路。</div>
   </div>
   <div class="foot">語音為 AI 合成（VOICEVOX：玄野武宏＝我、VOICEVOX:No.7、VOICEVOX:冥鳴ひまり、VOICEVOX:雀松朱司＝對方），已調整重音與問句語調；開口練習的另外兩種說法為本 App 自編。實際對話請以現場日本人說法為準。僅供個人學習使用。</div>
   <div style="display:flex;justify-content:flex-end;margin:10px 0 4px;font-size:11px"><a href="https://thwang40.github.io/nh-study/" style="color:#9aa0a6;text-decoration:none">撿角日語 ›</a></div>`;
 }
 function viewCat(cid, tab){
   const c = CAT[cid]; if(!c) return viewHome(); renderSide(cid); reveal = {};
+  if(c.day && (!tab || tab==='g')) return viewDay(c);
   tab = tab || 'p';
   const texts = c.phrases.map(p => p.ja).concat(c.dialogues.flatMap(d => d.lines.map(l => l.ja)));
   $('#view').innerHTML = `${crumb([[c.t]])}
   <h1>${c.icon} ${esc(c.t)}</h1>
-  <div class="tabs"><a href="#/c/${cid}/p" class="${tab==='p'?'on':''}">📣 句子（${c.phrases.length}）</a><a href="#/c/${cid}/d" class="${tab==='d'?'on':''}">🎧 對話（${c.dialogues.length}）</a></div>
+  <div class="tabs">${c.day?`<a href="#/c/${cid}/g">📷 照片教學</a>`:''}<a href="#/c/${cid}/p" class="${tab==='p'?'on':''}">📣 句子（${c.phrases.length}）</a><a href="#/c/${cid}/d" class="${tab==='d'?'on':''}">🎧 對話（${c.dialogues.length}）</a></div>
   ${tab==='p' ? `
   <div class="player"><div class="row"><button class="btn" id="playAll">▶ 全部播放</button>${speedSeg()}</div></div>
   ${patListHTML(texts, '這一組的重點句型')}
@@ -210,6 +216,30 @@ function viewCat(cid, tab){
   <div class="row" style="margin-top:10px"><a class="btn sm ghost" style="text-decoration:none" href="#/q/${cid}">✏️ 這一組的聽力測驗</a></div>`}
   ${nav(cid)}`;
   const pa = $('#playAll'); if(pa) pa.onclick = () => { if(pa.textContent.includes('停止')){ stopAll(); pa.textContent='▶ 全部播放'; return; } pa.textContent='⏹ 停止'; playSeq(c.phrases.map(p=>p.id), 900).then(()=>{ pa.textContent='▶ 全部播放'; }); };
+}
+/* 🗾 日本行每日：照片教學頁（場景：照片 → 照片裡的日文 → 說明 → 這個場景的句子（聽力優先）→ 展會會話可以直接用）→ 對話 → 今日 5 句必背 */
+function viewDay(c){
+  const cid = c.id;
+  $('#view').innerHTML = `${crumb([[c.t]])}
+  <h1>${c.icon} ${esc(c.t)}</h1>
+  <div class="tabs"><a href="#/c/${cid}/g" class="on">📷 照片教學</a><a href="#/c/${cid}/p">📣 句子（${c.phrases.length}）</a><a href="#/c/${cid}/d">🎧 對話（${c.dialogues.length}）</a></div>
+  <p class="small dayintro">${esc(c.intro)}</p>
+  <div class="row" style="margin:4px 0 6px">${speedSeg()}<a class="btn sm alt" style="text-decoration:none" href="#m5" data-act="gom5">⭐ 今日 5 句必背</a></div>
+  ${c.scenes.map((sc, si) => `<section class="dsc" id="sc${si}">
+    <h2>${esc(sc.t)}</h2>
+    <div class="pstrip">${sc.imgs.map(([u, cap]) => `<figure><img src="${esc(u)}" alt="${esc(cap)}" loading="lazy" decoding="async" data-act="zoom" data-src="${esc(u)}" data-cap="${esc(cap)}"><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>
+    <details class="words" open><summary>📷 照片裡的日文（${sc.words.length}）</summary><div class="wlist">${sc.words.map(w => `<div class="w"><div class="wj">${esc(w[0])}</div><div class="wk">${esc(w[1])}</div><div class="wz">${esc(w[2])}</div></div>`).join('')}</div></details>
+    <div class="tipbox">💡 ${esc(sc.tip)}</div>
+    <div class="script" data-blk><div class="blkbar"><button class="bshow" data-act="scplay" data-si="${si}">▶ 播放這個場景</button>${blkBtn(false)}</div>${sc.ids.map((id, i) => rowHTML(ITEM[id], {num:i+1})).join('')}</div>
+    ${sc.refs.length ? `<div class="refbox"><div class="refhd">🏭 展會會話可以直接用</div>${sc.refs.map(([k, why]) => `<div class="refwhy small">${esc(CAT[ITEM[k].cat].icon)} ${esc(CAT[ITEM[k].cat].t)}：${esc(why)}</div><div class="script">${rowHTML(ITEM[k], {num:'展'})}</div>`).join('')}</div>` : ''}
+  </section>`).join('')}
+  <section class="dsc"><h2>🎧 今天的小對話</h2><p class="small mute">每段：先聽 → 點開文字 → 🗣 開口練習（輪到你時只給場景，💡 提示要點了才出現）。</p>
+  <div class="dlist">${c.dialogues.map(d => `<a class="card" href="#/d/${d.id}"><div class="lnum">${S.done[d.id]?'<span class="badge">已練習</span>':''}</div><div class="ltitle">${esc(d.t)}</div><div class="small mute">🎬 ${esc(d.scene)}（${d.lines.length} 句）</div></a>`).join('')}</div></section>
+  <section class="dsc m5" id="m5"><h2>⭐ 今日 5 句必背</h2>
+  ${c.m5.map(([k, use], i) => { const it = ITEM[k]; return `<div class="m5i"><div class="m5n">${i+1}</div><div class="m5b"><div class="ja">${hiJa(it.ja)}</div><div class="kana">${esc(it.kana)}</div>${S.showRomaji?`<div class="ro">${esc(it.ro)}</div>`:''}<div class="zh">${esc(it.zh)}</div><div class="les">📘 ${esc(use)}</div></div><button class="ibtn s" data-act="play" data-k="${k}" aria-label="播放">🔊</button></div>`; }).join('')}
+  <div class="row" style="margin-top:10px"><button class="btn" id="m5All">▶ 5 句連續播放</button><a class="btn sm alt" style="text-decoration:none" href="#/sh/${cid}-m5">🔁 跟讀這 5 句</a><a class="btn sm ghost" style="text-decoration:none" href="#/q/${cid}">✏️ 聽力測驗</a></div></section>
+  ${nav(cid)}`;
+  const b = $('#m5All'); b.onclick = () => { if(b.textContent.includes('停止')){ stopAll(); b.textContent='▶ 5 句連續播放'; return; } b.textContent='⏹ 停止'; playSeq(c.m5.map(m => m[0]), 900).then(() => { b.textContent='▶ 5 句連續播放'; }); };
 }
 function nav(cid){ const i = J.cats.findIndex(c=>c.id===cid), p = J.cats[i-1], n = J.cats[i+1];
   return `<div class="row" style="margin-top:16px">${p?`<a class="btn ghost" style="text-decoration:none" href="#/c/${p.id}">‹ ${esc(p.t)}</a>`:''}${n?`<a class="btn ghost" style="text-decoration:none" href="#/c/${n.id}">${esc(n.t)} ›</a>`:''}</div>`; }
@@ -246,11 +276,12 @@ let curStageKey = null, SH = null;
 function renderStageSp(){ const b = $('#stageRes'); if(!b || !curStageKey) return; const r = b.querySelector('.res'); const keep = r ? r.innerHTML : '';
   b.innerHTML = spHTML(curStageKey).replace('<div class="sp">','<div class="sp" style="margin-top:12px">'); if(keep && recKey!==curStageKey) b.querySelector('.res').innerHTML = keep; }
 function viewShadow(scope){
-  const list = scope==='all' ? J.cats.flatMap(c=>c.phrases.map(p=>p.id)) : (CAT[scope] ? CAT[scope].phrases.map(p=>p.id) : null);
-  if(!list) return viewHome(); renderSide(scope==='all'?'sh':scope);
+  const m5 = /-m5$/.test(scope) && CAT[scope.slice(0, -3)];
+  const list = scope==='all' ? J.cats.flatMap(c=>c.phrases.map(p=>p.id)) : m5 ? m5.m5.map(m => m[0]) : (CAT[scope] ? CAT[scope].phrases.map(p=>p.id) : null);
+  if(!list) return viewHome(); renderSide(scope==='all'?'sh':m5?m5.id:scope);
   SH = {list, i:0, on:false, lv:0};
-  $('#view').innerHTML = `${crumb(scope==='all'?[['全部跟讀']]:[[CAT[scope].t,'#/c/'+scope],['跟讀']])}
-  <h1>🔁 跟讀（Shadowing）${scope==='all'?'・全部':''}</h1>
+  $('#view').innerHTML = `${crumb(scope==='all'?[['全部跟讀']]:m5?[[m5.t,'#/c/'+m5.id],['今日 5 句必背・跟讀']]:[[CAT[scope].t,'#/c/'+scope],['跟讀']])}
+  <h1>🔁 跟讀（Shadowing）${scope==='all'?'・全部':m5?'・今日 5 句必背':''}</h1>
   <p class="small mute">播放示範 → 進度條跑完前（約 1.5 倍時間）換你大聲跟著說 → 自動下一句。文字先蓋住，點一下才顯示。</p>
   <div class="row">${speedSeg()}<div class="seg"><button data-shr="1" class="${S.shReps==1?'on':''}">每句 1 次</button><button data-shr="2" class="${S.shReps==2?'on':''}">2 次</button><button data-shr="3" class="${S.shReps==3?'on':''}">3 次</button></div></div>
   <div class="stage" id="stage"></div>
@@ -518,6 +549,10 @@ document.addEventListener('click', e => {
     const x = document.querySelector(`.srow[data-key="${k}"] [data-act="idk"]`); if(x) x.classList.add('on');
     const sl = document.querySelector('#side a[href="#/review"]'); if(sl) sl.textContent = `📝 複習清單（${revCount()}）`; toast('已加入複習清單'); }
   else if(a==='srcclose') closeSrc(k);
+  else if(a==='zoom'){ $('#sheetBody').innerHTML = `<figure class="zoom"><img src="${esc(b.dataset.src)}" alt=""><figcaption class="small">${esc(b.dataset.cap)}</figcaption></figure><div class="row" style="margin-top:8px"><button class="btn" onclick="document.getElementById('sheet').classList.add('hidden')">關閉</button></div>`; $('#sheet').classList.remove('hidden'); }
+  else if(a==='scplay'){ const c = CAT[(location.hash.split('/')[2]||'')]; const sc = c && c.scenes && c.scenes[+b.dataset.si]; if(!sc) return;
+    if(b.textContent.includes('停止')){ stopAll(); b.textContent='▶ 播放這個場景'; return; } b.textContent='⏹ 停止'; playSeq(sc.ids, 900).then(() => { b.textContent='▶ 播放這個場景'; }); }
+  else if(a==='gom5'){ e.preventDefault(); const t = document.getElementById('m5'); if(t) t.scrollIntoView({behavior:'smooth'}); }
   else if(a==='altplay'){ stopAll(); playEl(audio, src(b.dataset.a)); }
   else if(a==='got'){ delete S.review[k]; save(); toast('太棒了！已從複習清單移除'); const y = scrollY; viewReview(); window.scrollTo(0, y); }
   else if(a==='bshow'){ e.preventDefault(); const box = b.closest('[data-blk]'); const on = !b.classList.contains('on');
@@ -535,7 +570,7 @@ $('#settingsBtn').onclick = openSettings;
 $('#sheet').addEventListener('click', e => { if(e.target.id==='sheet') $('#sheet').classList.add('hidden'); });
 
 /* ---------- 離線：清單＝App 用到的全部音檔（原句、開口練習另外兩種說法；各有 1x 與 0.7x） ---------- */
-const AUDIO_CACHE = 'jt-audio-v2';   // 與 sw.js 的 AUDIO 相同
+const AUDIO_CACHE = 'jt-audio-v3';   // 與 sw.js 的 AUDIO 相同
 const relKey = u => { try{ const m = new URL(u, location.href).pathname.match(/\/(audio\/[^/]+\.mp3)$/); return m ? m[1] : null; }catch(e){ return null; } };
 async function offScan(prune){
   const want = new Set(J.files), have = new Set(); let bytes = 0;
@@ -564,9 +599,9 @@ async function openSettings(){
     <div><b>假名</b> <div class="seg"><button data-kana="1" class="${S.showKana?'on':''}">顯示</button><button data-kana="0" class="${!S.showKana?'on':''}">隱藏</button></div></div>
     <div><b>羅馬拼音</b> <div class="seg"><button data-ro="1" class="${S.showRomaji?'on':''}">顯示</button><button data-ro="0" class="${!S.showRomaji?'on':''}">隱藏</button></div></div>
     <div><b>這台裝置支援</b>${supportHTML()}<div class="small mute">${isIOS?'iPhone：語音辨識需在「設定 › Siri」開啟 Siri／聽寫，並需要網路；若主畫面 App 模式不能辨識，請改用 Safari 開啟。錄音對比離線也能用。':'Android：請用 Chrome（Samsung Internet 可能不支援語音辨識）。語音辨識需要網路。'}${standalone?'（目前：主畫面 App 模式）':''}</div></div>
-    <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 12 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
+    <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 17 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
     <div><b>重設</b><div class="row" style="margin-top:6px"><button class="btn sm ghost" id="rsR">清空複習清單</button><button class="btn sm ghost" id="rs">清除進度與分數</button></div></div></div>
-    <div class="foot">版本 2.0（新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
+    <div class="foot">版本 2.1（🗾 日本行每日・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
   $('#sheet').classList.remove('hidden'); $('#ci').innerHTML = await cacheStatus();
   document.querySelectorAll('[data-kana]').forEach(b => b.onclick = () => { S.showKana = b.dataset.kana==='1'; save(); openSettings(); route(true); });
   document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { S.showRomaji = b.dataset.ro==='1'; save(); openSettings(); route(true); });

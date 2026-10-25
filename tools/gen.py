@@ -17,7 +17,7 @@ def setup_dict():
     for s,p,a,t,pr in DICT:
         if z(s) not in have and s not in have:
             post('/user_dict_word', surface=s, pronunciation=p, accent_type=a, word_type=t, priority=pr)
-SAY = [('話せる方', '話せるかた'), ('初めての方', '初めてのかた'), ('何でしょうか', 'なんでしょうか'), ('お書きします', 'おかきします')]  # VOICEVOX misreadings
+SAY = [('関内', 'かんない'), ('話せる方', '話せるかた'), ('初めての方', '初めてのかた'), ('何でしょうか', 'なんでしょうか'), ('お書きします', 'おかきします')]  # VOICEVOX misreadings
 def prep(t):
     for a, b in SAY: t = t.replace(a, b)
     return re.sub(r'(?<!そうです)か。', 'か？', t)
