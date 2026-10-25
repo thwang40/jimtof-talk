@@ -280,3 +280,12 @@ details summary{cursor:pointer;font-weight:600;padding:6px 0}
 .m5n{flex:0 0 28px;height:28px;border-radius:50%;background:var(--gold);color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center}
 .m5b{flex:1;min-width:0}.m5b .ja{margin-top:0;font-size:19px}
 .zoom{margin:0}.zoom img{width:100%;height:auto;border-radius:10px;display:block}
+/* 照片單字＋例句 */
+.words .wscript{margin-top:6px}
+.exs{margin:-2px 0 6px 34px}
+.exs>summary{cursor:pointer;font-size:13px;color:var(--blue);padding:2px 0;list-style:none}
+.exs>summary::-webkit-details-marker{display:none}
+.exs>summary::before{content:"▸ "}.exs[open]>summary::before{content:"▾ "}
+.exs .exscript{padding:20px 4px 6px;border-radius:12px;background:#fff}
+.exs .exscript .srow .stext .ja{font-size:16px}
+@media(max-width:600px){.exs{margin-left:0}.exs .exscript{padding:20px 0 6px}}

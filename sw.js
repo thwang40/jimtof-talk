@@ -1,4 +1,4 @@
-const SHELL = 'jt-shell-v3', AUDIO = 'jt-audio-v3';
+const SHELL = 'jt-shell-v4', AUDIO = 'jt-audio-v4';
 const SHELL_FILES = ['./','index.html','style.css','app.js','data.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','icons/maskable-512.png'];
 self.window = self; importScripts('data.js');
 // 全部音檔：原句＋開口練習的另外兩種說法（1x 與 0.7x），清單由 tools/build.py 產生
@@ -17,9 +17,9 @@ self.addEventListener('install', e => {
 });
 self.addEventListener('activate', e => {
   e.waitUntil((async () => {
-    // v2 -> v3：只有新增音檔（日本行每日），舊的全部搬過來，不用重新下載
-    if(await caches.has('jt-audio-v2')){
-      const o = await caches.open('jt-audio-v2'), n = await caches.open(AUDIO);
+    // v2/v3 -> v4：只有新增音檔（日本行每日、照片單字與例句），舊的全部搬過來，不用重新下載
+    for(const old of ['jt-audio-v3', 'jt-audio-v2']) if(await caches.has(old)){
+      const o = await caches.open(old), n = await caches.open(AUDIO);
       for(const r of await o.keys()){ if(!(await n.match(r))) await n.put(r, await o.match(r)); }
     }
     // v1 -> v2：1x 原句音檔沒變，搬過來；_s（慢速）改成 0.7x 重新產生，不搬

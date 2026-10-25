@@ -7,6 +7,8 @@ from jt_rp import RP, PATTERNS, PARTNER
 from romaji import romaji
 from jt_daily import DAYS, RP_D, PAT_D, rj
 ROOT = os.path.join(T, '..')
+# 單字的唸法：（）／ 換成停頓
+say_word = lambda t: t.replace('（', '、').replace('）', '').replace('／', '、')
 # 🗾 日本行每日：轉成跟行前單元一樣的格式接在後面（L＝課本課別）
 LES = {}
 for _d in DAYS:
@@ -59,8 +61,19 @@ def build():
             for sc in D['scenes']:
                 ids = [f"{c['id']}_{n+i}" for i in range(len(sc['phrases']))]; n += len(sc['phrases'])
                 refs = [[ALLP[ja][0], why] for ja, why in sc['refs']]
+                si = len(scenes); words = []
+                for wi, w in enumerate(sc['words']):
+                    assert len(w) == 4 and len(w[3]) == 3, ('每個單字要 3 個例句', w[0])
+                    wid = f"{c['id']}w{si}_{wi}"
+                    wo = dict(id=wid, ja=w[0], kana=w[1], ro=rj(w[1].replace('／', '、')), zh=w[2], ex=[])
+                    lines_all.append(dict(id=wid, ja=say_word(w[0]), kana=w[1], v='f'))
+                    for k, e in enumerate(w[3]):
+                        xid = f"{wid}x{k}"
+                        wo['ex'].append(dict(id=xid, ja=e[0], kana=e[1], ro=rj(e[1]), zh=e[2], L=e[3]))
+                        lines_all.append(dict(id=xid, ja=e[0], kana=e[1], v='me'))
+                    words.append(wo)
                 scenes.append(dict(t=sc['t'], imgs=[[f"img/{c['id']}/{f}.webp", cap] for f, cap in sc['imgs']],
-                                   words=[list(w) for w in sc['words']], tip=sc['tip'], ids=ids, refs=refs))
+                                   words=words, tip=sc['tip'], ids=ids, refs=refs))
             P = {p['ja']: p['id'] for p in phrases}
             cat.update(day=1, date=D['date'], intro=D['intro'], scenes=scenes, m5=[[P[ja], use] for ja, use in D['must5']])
         cats.append(cat)

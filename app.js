@@ -14,7 +14,11 @@ function save(){ try{ localStorage.setItem(LS, JSON.stringify(S)); }catch(e){} u
 const CAT = {}, DLG = {}, ITEM = {};
 J.cats.forEach(c => { CAT[c.id] = c;
   c.phrases.forEach((p, i) => ITEM[p.id] = Object.assign({key:p.id, r:'me', a:p.id, cat:c.id, n:i}, p));
-  c.dialogues.forEach(d => { d.cat = c.id; DLG[d.id] = d; d.lines.forEach((l,i) => ITEM[d.id+':'+i] = Object.assign({key:d.id+':'+i, cat:c.id, d:d.id, n:i}, l)); }); });
+  c.dialogues.forEach(d => { d.cat = c.id; DLG[d.id] = d; d.lines.forEach((l,i) => ITEM[d.id+':'+i] = Object.assign({key:d.id+':'+i, cat:c.id, d:d.id, n:i}, l)); });
+  // 日本行每日：照片裡的日文（單字）與每個單字的 3 個例句
+  (c.scenes||[]).forEach((sc, si) => sc.words.forEach((w, wi) => {
+    ITEM[w.id] = Object.assign({key:w.id, r:'me', a:w.id, cat:c.id, n:wi, sc:si, kind:'w', word:w.ja}, w, {ex:undefined});
+    w.ex.forEach((x, k) => ITEM[x.id] = Object.assign({key:x.id, r:'me', a:x.id, cat:c.id, n:k, sc:si, kind:'x', word:w.ja, note:''}, x)); })); });
 const ME = '王';
 const DAYS = J.cats.filter(c => c.day);
 const who = it => it.r === 'me' ? ME : (it.d ? DLG[it.d].pn : '對方');
@@ -144,7 +148,7 @@ function spRes(key, html){ const b = document.querySelector(`#sp-${kid(key)} .re
 function srcHTML(key){ const it = ITEM[key], c = CAT[it.cat], d = it.d ? DLG[it.d] : null;
   const ps = patsIn([it.ja]); const R = J.rp[it.ja];
   return `<div class="src"><button class="srcx" data-act="srcclose" data-k="${key}">收起 ▲</button>
-    <div><b>出處</b>：${c.icon} ${esc(c.t)} › ${d ? `<a href="#/d/${d.id}">對話「${esc(d.t)}」</a>第 ${it.n+1} 句（${esc(who(it))}）` : `<a href="#/c/${c.id}/p">句子</a> 第 ${it.n+1} 句`}</div>
+    <div><b>出處</b>：${c.icon} ${esc(c.t)} › ${it.kind ? `<a href="#/c/${c.id}/g">${esc(c.scenes[it.sc].t)}</a> › 照片裡的日文「${esc(it.word)}」${it.kind==='x'?` 例句 ${it.n+1}`:''}` : d ? `<a href="#/d/${d.id}">對話「${esc(d.t)}」</a>第 ${it.n+1} 句（${esc(who(it))}）` : `<a href="#/c/${c.id}/p">句子</a> 第 ${it.n+1} 句`}</div>
     ${it.note?`<div style="margin-top:6px">💡 ${esc(it.note)}</div>`:''}
     ${ps.length?`<div class="srch"><b>重點句型</b>${ps.map(p => `<div class="gent"><b class="kp">${esc(p[1])}</b> <span class="small mute">${esc(p[2])}</span></div>`).join('')}</div>`:''}
     ${R?`<div class="srch"><b>也可以這樣說</b>${R[1].map((a, j) => `<div class="alt"><button class="ibtn s" data-act="altplay" data-a="${esc(it.a)}-r_${j}" aria-label="播放">🔊</button><div><div class="ja">${hiJa(a[0])}</div>${S.showKana?`<div class="kana">${esc(a[1])}</div>`:''}<div class="zh">${esc(a[3])}</div></div></div>`).join('')}</div>`:''}
@@ -192,7 +196,7 @@ function viewHome(){
   <div class="card small">
     <div><b>iPhone（Safari）</b>：分享 →「加入主畫面」。</div>
     <div><b>Android（Chrome）</b>：右上「⋮」→「加到主畫面／安裝應用程式」。</div>
-    <div class="mute" style="margin-top:4px">第一次開啟後音檔會自動存到裝置；到 ⚙︎ 設定按「下載全部離線資料」可確認全部存好（約 17 MB）。語音辨識需要網路。</div>
+    <div class="mute" style="margin-top:4px">第一次開啟後音檔會自動存到裝置；到 ⚙︎ 設定按「下載全部離線資料」可確認全部存好（約 30 MB）。語音辨識需要網路。</div>
   </div>
   <div class="foot">語音為 AI 合成（VOICEVOX：玄野武宏＝我、VOICEVOX:No.7、VOICEVOX:冥鳴ひまり、VOICEVOX:雀松朱司＝對方），已調整重音與問句語調；開口練習的另外兩種說法為本 App 自編。實際對話請以現場日本人說法為準。僅供個人學習使用。</div>
   <div style="display:flex;justify-content:flex-end;margin:10px 0 4px;font-size:11px"><a href="https://thwang40.github.io/nh-study/" style="color:#9aa0a6;text-decoration:none">撿角日語 ›</a></div>`;
@@ -228,7 +232,9 @@ function viewDay(c){
   ${c.scenes.map((sc, si) => `<section class="dsc" id="sc${si}">
     <h2>${esc(sc.t)}</h2>
     <div class="pstrip">${sc.imgs.map(([u, cap]) => `<figure><img src="${esc(u)}" alt="${esc(cap)}" loading="lazy" decoding="async" data-act="zoom" data-src="${esc(u)}" data-cap="${esc(cap)}"><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>
-    <details class="words" open><summary>📷 照片裡的日文（${sc.words.length}）</summary><div class="wlist">${sc.words.map(w => `<div class="w"><div class="wj">${esc(w[0])}</div><div class="wk">${esc(w[1])}</div><div class="wz">${esc(w[2])}</div></div>`).join('')}</div></details>
+    <details class="words" open><summary>📷 照片裡的日文（${sc.words.length}）<span class="small mute">・先聽再看，每個字有 3 個例句</span></summary>
+      <div class="script wscript" data-blk><div class="blkbar"><button class="bshow" data-act="wplay" data-si="${si}">▶ 播放單字</button>${blkBtn(false)}</div>
+      ${sc.words.map((w, wi) => rowHTML(ITEM[w.id], {num:wi+1}) + `<details class="exs"><summary>例句（${w.ex.length}）</summary><div class="script exscript" data-blk><div class="blkbar"><button class="bshow" data-act="xplay" data-w="${w.id}">▶ 播放例句</button>${blkBtn(false)}</div>${w.ex.map((x, k) => rowHTML(ITEM[x.id], {num:'①②③④⑤'[k]})).join('')}</div></details>`).join('')}</div></details>
     <div class="tipbox">💡 ${esc(sc.tip)}</div>
     <div class="script" data-blk><div class="blkbar"><button class="bshow" data-act="scplay" data-si="${si}">▶ 播放這個場景</button>${blkBtn(false)}</div>${sc.ids.map((id, i) => rowHTML(ITEM[id], {num:i+1})).join('')}</div>
     ${sc.refs.length ? `<div class="refbox"><div class="refhd">🏭 展會會話可以直接用</div>${sc.refs.map(([k, why]) => `<div class="refwhy small">${esc(CAT[ITEM[k].cat].icon)} ${esc(CAT[ITEM[k].cat].t)}：${esc(why)}</div><div class="script">${rowHTML(ITEM[k], {num:'展'})}</div>`).join('')}</div>` : ''}
@@ -264,7 +270,7 @@ function viewDlg(did){
 function viewReview(){
   renderSide('review'); reveal = {};
   const ks = Object.keys(S.review).filter(k => ITEM[k]).sort((a, b) => (S.review[b].t||0) - (S.review[a].t||0));
-  curRowOpts = k => ({extra: `<div class="reveal-actions"><span class="small mute">${esc(CAT[ITEM[k].cat].t)}${ITEM[k].d?'・'+esc(DLG[ITEM[k].d].t):'・句子'}</span><button class="btn sm ok" data-act="got" data-k="${k}">✓ 我會了</button></div>`});
+  curRowOpts = k => ({extra: `<div class="reveal-actions"><span class="small mute">${esc(CAT[ITEM[k].cat].t)}${ITEM[k].d?'・'+esc(DLG[ITEM[k].d].t):ITEM[k].kind==='w'?'・照片單字':ITEM[k].kind==='x'?'・「'+esc(ITEM[k].word)+'」例句':'・句子'}</span><button class="btn sm ok" data-act="got" data-k="${k}">✓ 我會了</button></div>`});
   $('#view').innerHTML = `${crumb([['複習清單']])}<h1>📝 複習清單（${ks.length}）</h1>
   ${ks.length ? `<div class="player"><div class="row"><button class="btn" id="playAll">▶ 全部播放</button>${speedSeg()}</div></div>
   <div class="script" data-blk><div class="blkbar">${blkBtn(false)}</div>${ks.map(k => rowHTML(ITEM[k], curRowOpts(k))).join('')}</div>` : `<div class="card small mute">還沒有。聽不懂的句子按 🙋「我不會」，就會出現在這裡。</div>`}`;
@@ -484,12 +490,14 @@ function buildIndex(){ const I = [];
   J.cats.forEach(c => {
     c.phrases.forEach((p, i) => I.push(sqItem({t:'句子', cat:c.id, ja:p.ja, kana:p.kana, ro:p.ro, zh:p.zh, who:'', src:`句子 ${i+1}`, href:`#/c/${c.id}/p`, key:p.id, au:p.id})));
     c.dialogues.forEach(d => d.lines.forEach((l, i) => I.push(sqItem({t:'對話', cat:c.id, ja:l.ja, kana:l.kana, ro:l.ro, zh:l.zh, who:who(ITEM[d.id+':'+i]), src:`「${d.t}」`, href:`#/d/${d.id}`, key:d.id+':'+i, au:l.a}))));
+    (c.scenes||[]).forEach(sc => sc.words.forEach(w => { I.push(sqItem({t:'單字', cat:c.id, ja:w.ja, kana:w.kana, ro:w.ro, zh:w.zh, who:'', src:sc.t, href:`#/c/${c.id}/g`, key:w.id, au:w.id}));
+      w.ex.forEach(x => I.push(sqItem({t:'例句', cat:c.id, ja:x.ja, kana:x.kana, ro:x.ro, zh:x.zh, who:'', src:`「${w.ja}」的例句`, href:`#/c/${c.id}/g`, key:x.id, au:x.id}))); }));
     const seen = new Set();
     c.dialogues.forEach(d => d.lines.forEach((l, i) => { if(seen.has(l.a)) return; seen.add(l.a); const R = J.rp[l.ja]; if(!R) return;
       R[1].forEach((a, j) => I.push(sqItem({t:'其他說法', cat:c.id, ja:a[0], kana:a[1], ro:a[2], zh:a[3], who:who(ITEM[d.id+':'+i]), src:`「${d.t}」開口練習`, href:`#/d/${d.id}`, key:d.id+':'+i, au:`${l.a}-r_${j}`}))); }));
   });
   return SIDX = I; }
-const SQ_BADGE = {'句子':'txt', '對話':'g', '其他說法':'xt'};
+const SQ_BADGE = {'句子':'txt', '對話':'g', '其他說法':'xt', '單字':'txt', '例句':'g'};
 function searchFormHTML(q, cls){ return `<form class="sform${cls?' '+cls:''}" role="search" data-sform><input type="search" name="q" value="${esc(q||'')}" placeholder="搜尋日文、假名或中文（例：めいし、名片）" aria-label="搜尋" enterkeyhint="search" autocomplete="off"><button class="btn sm" type="submit">🔍 搜尋</button></form>`; }
 let SVIEW = [], SREV = {}, sAllOn = false;
 function sTextHTML(o, lv, nq){
@@ -533,7 +541,7 @@ document.addEventListener('submit', e => { const f = e.target.closest('[data-sfo
 let pendingHL = null;
 document.addEventListener('click', e => { const a = e.target.closest('a.sgo'); if(!a) return; pendingHL = a.dataset.hl || null; if(location.hash === a.getAttribute('href')){ e.preventDefault(); route(); } });
 function applyHL(){ const k = pendingHL; pendingHL = null; if(!k || !ITEM[k]) return; reveal[k] = 2; rerender(k);
-  const el = document.querySelector(`.srow[data-key="${k}"]`); if(!el) return; el.scrollIntoView({block:'center'}); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200); }
+  const el = document.querySelector(`.srow[data-key="${k}"]`); if(!el) return; let p = el.parentElement; while(p){ if(p.tagName==='DETAILS') p.open = true; p = p.parentElement; } el.scrollIntoView({block:'center'}); el.classList.add('flash'); setTimeout(() => el.classList.remove('flash'), 2200); }
 
 /* ---------- events ---------- */
 function closeSrc(k){ const b = document.getElementById('src-'+kid(k)); if(b) b.innerHTML = ''; const x = document.querySelector(`.srow[data-key="${k}"] [data-act="idk"]`); if(x) x.classList.remove('on'); }
@@ -552,11 +560,15 @@ document.addEventListener('click', e => {
   else if(a==='zoom'){ $('#sheetBody').innerHTML = `<figure class="zoom"><img src="${esc(b.dataset.src)}" alt=""><figcaption class="small">${esc(b.dataset.cap)}</figcaption></figure><div class="row" style="margin-top:8px"><button class="btn" onclick="document.getElementById('sheet').classList.add('hidden')">關閉</button></div>`; $('#sheet').classList.remove('hidden'); }
   else if(a==='scplay'){ const c = CAT[(location.hash.split('/')[2]||'')]; const sc = c && c.scenes && c.scenes[+b.dataset.si]; if(!sc) return;
     if(b.textContent.includes('停止')){ stopAll(); b.textContent='▶ 播放這個場景'; return; } b.textContent='⏹ 停止'; playSeq(sc.ids, 900).then(() => { b.textContent='▶ 播放這個場景'; }); }
+  else if(a==='wplay' || a==='xplay'){ const c = CAT[(location.hash.split('/')[2]||'')]; if(!c || !c.scenes) return;
+    const ids = a==='wplay' ? c.scenes[+b.dataset.si].words.map(w => w.id) : ITEM[b.dataset.w] && c.scenes[ITEM[b.dataset.w].sc].words.find(w => w.id===b.dataset.w).ex.map(x => x.id);
+    const lab = a==='wplay' ? '▶ 播放單字' : '▶ 播放例句'; if(!ids) return;
+    if(b.textContent.includes('停止')){ stopAll(); b.textContent = lab; return; } b.textContent = '⏹ 停止'; playSeq(ids, 900).then(() => { b.textContent = lab; }); }
   else if(a==='gom5'){ e.preventDefault(); const t = document.getElementById('m5'); if(t) t.scrollIntoView({behavior:'smooth'}); }
   else if(a==='altplay'){ stopAll(); playEl(audio, src(b.dataset.a)); }
   else if(a==='got'){ delete S.review[k]; save(); toast('太棒了！已從複習清單移除'); const y = scrollY; viewReview(); window.scrollTo(0, y); }
   else if(a==='bshow'){ e.preventDefault(); const box = b.closest('[data-blk]'); const on = !b.classList.contains('on');
-    box.querySelectorAll('.srow[data-key]').forEach(el => { const kk = el.dataset.key; reveal[kk] = on ? 2 : 0; if(!on) closeSrc(kk); rerender(kk); }); b.outerHTML = blkBtn(on); }
+    box.querySelectorAll('.srow[data-key]').forEach(el => { if(el.closest('[data-blk]') !== box) return; const kk = el.dataset.key; reveal[kk] = on ? 2 : 0; if(!on) closeSrc(kk); rerender(kk); }); b.outerHTML = blkBtn(on); }
   else if(a==='spk'){ const box = document.getElementById('sp-'+kid(k)); if(box.innerHTML){ box.innerHTML=''; b.classList.remove('on'); } else { box.innerHTML = spHTML(k); b.classList.add('on'); } }
   else if(a==='rec') toggleRec(k);
   else if(a==='mine') playMine(k);
@@ -570,7 +582,7 @@ $('#settingsBtn').onclick = openSettings;
 $('#sheet').addEventListener('click', e => { if(e.target.id==='sheet') $('#sheet').classList.add('hidden'); });
 
 /* ---------- 離線：清單＝App 用到的全部音檔（原句、開口練習另外兩種說法；各有 1x 與 0.7x） ---------- */
-const AUDIO_CACHE = 'jt-audio-v3';   // 與 sw.js 的 AUDIO 相同
+const AUDIO_CACHE = 'jt-audio-v4';   // 與 sw.js 的 AUDIO 相同
 const relKey = u => { try{ const m = new URL(u, location.href).pathname.match(/\/(audio\/[^/]+\.mp3)$/); return m ? m[1] : null; }catch(e){ return null; } };
 async function offScan(prune){
   const want = new Set(J.files), have = new Set(); let bytes = 0;
@@ -599,9 +611,9 @@ async function openSettings(){
     <div><b>假名</b> <div class="seg"><button data-kana="1" class="${S.showKana?'on':''}">顯示</button><button data-kana="0" class="${!S.showKana?'on':''}">隱藏</button></div></div>
     <div><b>羅馬拼音</b> <div class="seg"><button data-ro="1" class="${S.showRomaji?'on':''}">顯示</button><button data-ro="0" class="${!S.showRomaji?'on':''}">隱藏</button></div></div>
     <div><b>這台裝置支援</b>${supportHTML()}<div class="small mute">${isIOS?'iPhone：語音辨識需在「設定 › Siri」開啟 Siri／聽寫，並需要網路；若主畫面 App 模式不能辨識，請改用 Safari 開啟。錄音對比離線也能用。':'Android：請用 Chrome（Samsung Internet 可能不支援語音辨識）。語音辨識需要網路。'}${standalone?'（目前：主畫面 App 模式）':''}</div></div>
-    <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 17 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
+    <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 30 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
     <div><b>重設</b><div class="row" style="margin-top:6px"><button class="btn sm ghost" id="rsR">清空複習清單</button><button class="btn sm ghost" id="rs">清除進度與分數</button></div></div></div>
-    <div class="foot">版本 2.1（🗾 日本行每日・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
+    <div class="foot">版本 2.2（🗾 日本行每日＋照片單字例句・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
   $('#sheet').classList.remove('hidden'); $('#ci').innerHTML = await cacheStatus();
   document.querySelectorAll('[data-kana]').forEach(b => b.onclick = () => { S.showKana = b.dataset.kana==='1'; save(); openSettings(); route(true); });
   document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { S.showRomaji = b.dataset.ro==='1'; save(); openSettings(); route(true); });
