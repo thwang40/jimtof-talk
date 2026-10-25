@@ -123,8 +123,10 @@ function textBody(it, lv){
 function rowHTML(it, opts={}){
   const lv = reveal[it.key]||0, me = it.r === 'me';
   const left = opts.num != null ? `<div class="snum">${opts.num}</div>` : `<div class="sname" style="color:${wcol(it)}">${esc(who(it))}<span class="colon">：</span></div>`;
-  return `<div class="srow${opts.num!=null?' prow':''}${S.review[it.key]?' unf':''}" data-key="${it.key}">${left}
-    <div class="stext${lv?'':' masked'}" data-act="rv" data-k="${it.key}" role="button" tabindex="0" aria-label="${lv>=2?'再點一次隱藏':lv?'顯示中文':'顯示日文'}">${textBody(it, lv)}${opts.extra||''}</div>
+  // 📷 照片單字小截圖：還沒顯示文字時先模糊（點了＝顯示日文），顯示後點一下放大
+  const th = it.th ? `<button class="wthumb${lv?'':' blur'}" data-act="${lv?'zoom':'rv'}" data-k="${it.key}" data-src="${esc(it.th)}" data-cap="${esc((it.fb?'相關畫面（照片裡沒有這個字）':'照片裡的「'+it.ja+'」')+(it.thc?'・'+it.thc:''))}" aria-label="${lv?'放大小截圖':'先聽；點一下顯示日文和清楚的截圖'}" title="${lv?'點一下放大':'先聽再看'}"><img src="${esc(it.th)}" alt="" loading="lazy" decoding="async">${it.fb?'<span class="fbtag">相關畫面</span>':''}</button>` : '';
+  return `<div class="srow${opts.num!=null?' prow':''}${it.th?' wrow'+(lv?'':' wmask'):''}${S.review[it.key]?' unf':''}" data-key="${it.key}">${left}
+    <div class="stext${lv?'':' masked'}" data-act="rv" data-k="${it.key}" role="button" tabindex="0" aria-label="${lv>=2?'再點一次隱藏':lv?'顯示中文':'顯示日文'}">${textBody(it, lv)}${opts.extra||''}</div>${th}
     <div class="sbtns"><button class="ibtn s" data-act="play" data-k="${it.key}" aria-label="播放" title="播放">🔊</button><button class="ibtn s" data-act="rep" data-k="${it.key}" aria-label="重複三次" title="重複三次">🔁</button>${me?`<button class="ibtn s" data-act="spk" data-k="${it.key}" aria-label="錄音對比" title="錄音對比／辨識">🎙</button>`:''}<button class="ibtn s" data-act="idk" data-k="${it.key}" aria-label="我不會（看出處並加入複習）" title="我不會">🙋</button></div>
   </div><div class="srcbox" id="src-${kid(it.key)}"></div><div class="spbox" id="sp-${kid(it.key)}"></div>`; }
 function rerender(key, opts){ const el = document.querySelector(`.srow[data-key="${key}"]`); if(!el) return; const it = ITEM[key];
@@ -613,7 +615,7 @@ async function openSettings(){
     <div><b>這台裝置支援</b>${supportHTML()}<div class="small mute">${isIOS?'iPhone：語音辨識需在「設定 › Siri」開啟 Siri／聽寫，並需要網路；若主畫面 App 模式不能辨識，請改用 Safari 開啟。錄音對比離線也能用。':'Android：請用 Chrome（Samsung Internet 可能不支援語音辨識）。語音辨識需要網路。'}${standalone?'（目前：主畫面 App 模式）':''}</div></div>
     <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 30 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
     <div><b>重設</b><div class="row" style="margin-top:6px"><button class="btn sm ghost" id="rsR">清空複習清單</button><button class="btn sm ghost" id="rs">清除進度與分數</button></div></div></div>
-    <div class="foot">版本 2.2（🗾 日本行每日＋照片單字例句・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
+    <div class="foot">版本 2.3（🗾 日本行每日＋照片單字例句＋單字小截圖・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
   $('#sheet').classList.remove('hidden'); $('#ci').innerHTML = await cacheStatus();
   document.querySelectorAll('[data-kana]').forEach(b => b.onclick = () => { S.showKana = b.dataset.kana==='1'; save(); openSettings(); route(true); });
   document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { S.showRomaji = b.dataset.ro==='1'; save(); openSettings(); route(true); });

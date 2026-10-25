@@ -66,6 +66,10 @@ def build():
                     assert len(w) == 4 and len(w[3]) == 3, ('每個單字要 3 個例句', w[0])
                     wid = f"{c['id']}w{si}_{wi}"
                     wo = dict(id=wid, ja=w[0], kana=w[1], ro=rj(w[1].replace('／', '、')), zh=w[2], ex=[])
+                    cr = D.get('crops', {}).get(w[0])   # 📷 單字小截圖（tools/crops.py 產生）
+                    if cr and os.path.exists(os.path.join(ROOT, 'img', c['id'], 'w', wid + '.webp')):
+                        wo['th'] = f"img/{c['id']}/w/{wid}.webp"; wo['thc'] = dict(sc['imgs']).get(cr[0], '')
+                        if 'fallback' in cr[2:]: wo['fb'] = 1
                     lines_all.append(dict(id=wid, ja=say_word(w[0]), kana=w[1], v='f'))
                     for k, e in enumerate(w[3]):
                         xid = f"{wid}x{k}"
@@ -93,7 +97,8 @@ for c in cats:
 if __name__ == '__main__':
     audio = sorted({x['id'] for x in AL})
     files = [f'audio/{a}{s}.mp3' for a in audio + [x['id'] for x in RALT] for s in ('', '_s')]
-    imgs = [u for c in cats for sc in c.get('scenes', []) for u, _ in sc['imgs']]
+    imgs = [u for c in cats for sc in c.get('scenes', []) for u, _ in sc['imgs']] + \
+           [w['th'] for c in cats for sc in c.get('scenes', []) for w in sc['words'] if w.get('th')]
     data = dict(cats=cats, audio=audio, rp=RPD, pat=[list(p) for p in PATTERNS], files=files, imgs=imgs)
     open(os.path.join(ROOT, 'data.js'), 'w').write('window.JT=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
     print('phrases', sum(len(c['phrases']) for c in cats), 'dialogues', sum(len(c['dialogues']) for c in cats),
