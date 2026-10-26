@@ -1,3 +1,4 @@
+import hashlib
 """Build data.js from content.py, and (with --audio OUT) generate VOICEVOX audio; --check compares readings."""
 import sys, os, json, re
 T = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, T)
@@ -68,7 +69,7 @@ def build():
                     wo = dict(id=wid, ja=w[0], kana=w[1], ro=rj(w[1].replace('／', '、')), zh=w[2], ex=[])
                     cr = D.get('crops', {}).get(w[0])   # 📷 單字小截圖（tools/crops.py 產生）
                     if cr and os.path.exists(os.path.join(ROOT, 'img', c['id'], 'w', wid + '.webp')):
-                        wo['th'] = f"img/{c['id']}/w/{wid}.webp"; wo['thc'] = dict(sc['imgs']).get(cr[0], '')
+                        wo['th'] = f"img/{c['id']}/w/{wid}.webp?v=" + hashlib.md5(open(os.path.join(ROOT, 'img', c['id'], 'w', wid + '.webp'), 'rb').read()).hexdigest()[:8]; wo['thc'] = dict(sc['imgs']).get(cr[0], '')
                         if 'fallback' in cr[2:]: wo['fb'] = 1
                     lines_all.append(dict(id=wid, ja=say_word(w[0]), kana=w[1], v='f'))
                     for k, e in enumerate(w[3]):

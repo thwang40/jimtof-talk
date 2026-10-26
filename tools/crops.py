@@ -20,11 +20,22 @@ def photo(d, p, cache):
             im.paste(r, box[:2])
         cache[p] = im
     return cache[p]
-def crop_one(im, b, out):
+CTX_X, CTX_Y = 0.75, 1.6   # 周圍文字：左右各加 0.75 個字框寬（至少 2 個字高），上下各加 1.6 個字框高 → 約 2～3 倍字框
+def crop_one(im, b, out, mark=True):
     W, H = im.size; x0, y0, x1, y1 = b[0] * W, b[1] * H, b[2] * W, b[3] * H
-    pad = max(0.45 * min(y1 - y0, x1 - x0), 0.012 * max(W, H))
-    c = im.crop((int(max(0, x0 - pad)), int(max(0, y0 - pad)), int(min(W, x1 + pad)), int(min(H, y1 + pad))))
-    c.thumbnail((MAXE, MAXE), Image.LANCZOS); q = Q0
+    w, h = x1 - x0, y1 - y0; s = min(w, h)
+    px = max(CTX_X * w, 2.0 * s, 0.02 * max(W, H)); py = max(CTX_Y * h, 1.2 * s, 0.02 * max(W, H))
+    if h > w * 1.5: px, py = max(2.4 * w, 2.0 * s), max(0.35 * h, 1.2 * s)   # 直書：左右多加幾行
+    cx0, cy0, cx1, cy1 = int(max(0, x0 - px)), int(max(0, y0 - py)), int(min(W, x1 + px)), int(min(H, y1 + py))
+    c = im.crop((cx0, cy0, cx1, cy1)).convert('RGBA')
+    if mark:   # 目標字加淡黃底＋框，旁邊的字照樣看得到
+        from PIL import ImageDraw
+        ov = Image.new('RGBA', c.size, (0, 0, 0, 0)); d = ImageDraw.Draw(ov)
+        m = max(2, int(0.12 * s)); lw = max(3, int(max(c.size) / 160))
+        r = (x0 - cx0 - m, y0 - cy0 - m, x1 - cx0 + m, y1 - cy0 + m)
+        d.rounded_rectangle(r, radius=max(4, m * 2), fill=(255, 230, 0, 46), outline=(255, 120, 0, 235), width=lw)
+        c = Image.alpha_composite(c, ov)
+    c = c.convert('RGB'); c.thumbnail((MAXE, MAXE), Image.LANCZOS); q = Q0
     while True:
         c.save(out, 'WEBP', quality=q, method=6)
         if os.path.getsize(out) <= LIMIT or q <= 40: break
@@ -46,5 +57,5 @@ if __name__ == '__main__':
             out = os.path.join(ROOT, 'img', d['id'], 'w', wid + '.webp')
             if os.path.exists(out) and not force: continue
             p, b = C[ja][0], C[ja][1]
-            crop_one(photo(d, p, cache), b, out); n += 1
+            crop_one(photo(d, p, cache), b, out, 'nomark' not in C[ja][2:] and 'fallback' not in C[ja][2:]); n += 1
         print(d['id'], 'crops made', n)
