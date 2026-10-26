@@ -1,4 +1,4 @@
-const SHELL = 'jt-shell-v7', AUDIO = 'jt-audio-v4';
+const SHELL = 'jt-shell-v8', AUDIO = 'jt-audio-v4';
 const SHELL_FILES = ['./','index.html','style.css','app.js','data.js','manifest.webmanifest','icons/icon-192.png','icons/icon-512.png','icons/apple-touch-icon.png','icons/maskable-512.png'];
 self.window = self; importScripts('data.js');
 // 全部音檔：原句＋開口練習的另外兩種說法（1x 與 0.7x），清單由 tools/build.py 產生

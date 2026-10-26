@@ -240,7 +240,8 @@ details summary{cursor:pointer;font-weight:600;padding:6px 0}
 .hero + .small{margin-top:0}
 /* 寬螢幕：左側目錄 */
 @media (min-width:840px){
-  .layout{display:grid;grid-template-columns:260px 1fr;gap:0}
+  .layout{display:grid;grid-template-columns:260px minmax(0,1fr);gap:0}
+  .layout > *{min-width:0}
   .side{display:block;position:sticky;top:var(--hdr,56px);align-self:start;height:calc(100vh - var(--hdr,56px));overflow:auto;padding:12px;border-right:1px solid var(--line)}
   .side a{display:block;padding:8px 10px;border-radius:10px;text-decoration:none;font-size:14px}
   .side a.cur{background:var(--pale);color:var(--pri);font-weight:700;box-shadow:inset 3px 0 0 var(--pri)}
