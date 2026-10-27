@@ -20,7 +20,10 @@ J.cats.forEach(c => { CAT[c.id] = c;
     ITEM[w.id] = Object.assign({key:w.id, r:'me', a:w.id, cat:c.id, n:wi, sc:si, kind:'w', word:w.ja}, w, {ex:undefined});
     w.ex.forEach((x, k) => ITEM[x.id] = Object.assign({key:x.id, r:'me', a:x.id, cat:c.id, n:k, sc:si, kind:'x', word:w.ja, note:''}, x));
     // 🧩 整句：照片上這個字所在的整句話（同一句的單字共用同一個音檔；每張單字卡各有一列）
-    if(w.q != null && c.qs && c.qs[w.q]) ITEM[w.id+':q'] = Object.assign({key:w.id+':q', r:'me', cat:c.id, n:wi, sc:si, kind:'q', word:w.ja, note:''}, c.qs[w.q], {a:c.qs[w.q].id}); })); });
+    if(w.q != null && c.qs && c.qs[w.q]){ const q = c.qs[w.q]; ITEM[w.id+':q'] = Object.assign({key:w.id+':q', r:'me', cat:c.id, n:wi, sc:si, kind:'q', word:w.ja, note:''}, q, {a:q.id, th:undefined});
+      // 🧩 整句聽力頁用的（每句一個，不重複）：key＝音檔 id
+      if(!ITEM[q.id]) ITEM[q.id] = Object.assign({key:q.id, r:'me', a:q.id, cat:c.id, n:w.q, sc:si, kind:'q', word:q.ws.join('」「'), note:''}, q); } })); });
+const qKeys = c => (c.qs||[]).map(q => q.id).filter(k => ITEM[k]);
 const ME = '王';
 const DAYS = J.cats.filter(c => c.day);
 const who = it => it.r === 'me' ? ME : (it.d ? DLG[it.d].pn : '對方');
@@ -178,6 +181,7 @@ function viewHome(){
   <div class="row" style="margin:8px 0 14px">
     <a class="btn" style="text-decoration:none" href="#/c/c1">從打招呼開始</a>
     <a class="btn ghost" style="text-decoration:none" href="#/sh/all">🔁 全部跟讀</a>
+    ${DAYS.some(c => qKeys(c).length) ? `<a class="btn ghost" style="text-decoration:none" href="#/sh/allq">🧩 全部整句跟讀</a>` : ''}
     <a class="btn alt" style="text-decoration:none" href="#/review">📝 複習清單（${revCount()}）</a>
     <span class="small mute">已練習對話 ${doneD}/${nD}</span>
   </div>
@@ -185,7 +189,7 @@ function viewHome(){
     return `<a class="card" href="#/c/${c.id}"><div class="ic">${c.icon}</div><div class="ltitle">${esc(c.t)}</div><div class="small mute">${c.phrases.length} 句・${c.dialogues.length} 段對話${qs!=null?`・測驗 ${qs}%`:''}</div><div class="bar"><i style="width:${Math.round(n/c.dialogues.length*100)}%"></i></div></a>`; }).join('')}</div>
   ${DAYS.length ? `<h2>🗾 日本行每日</h2><p class="small mute">出差期間每天一個單元：當天照片裡的日文＋實用句＋小對話，每個句型都標了《文化初級日本語》第幾課。</p>
   <div class="dlist">${DAYS.slice().reverse().map(c => { const n = c.dialogues.filter(d => S.done[d.id]).length;
-    return `<a class="card daycard" href="#/c/${c.id}"><div class="ltitle">${c.icon} ${esc(c.t)}</div><div class="small mute">📷 ${c.scenes.reduce((a,x)=>a+x.imgs.length,0)} 張照片・${c.scenes.length} 個場景・${c.phrases.length} 句・${c.dialogues.length} 段對話</div><div class="bar"><i style="width:${Math.round(n/c.dialogues.length*100)}%"></i></div></a>`; }).join('')}</div>` : ''}
+    return `<a class="card daycard" href="#/c/${c.id}"><div class="ltitle">${c.icon} ${esc(c.t)}</div><div class="small mute">📷 ${c.scenes.reduce((a,x)=>a+x.imgs.length,0)} 張照片・${c.scenes.length} 個場景・${qKeys(c).length ? `🧩 ${qKeys(c).length} 句整句・` : ''}${c.phrases.length} 句・${c.dialogues.length} 段對話</div><div class="bar"><i style="width:${Math.round(n/c.dialogues.length*100)}%"></i></div></a>`; }).join('')}</div>` : ''}
   <h2>練習方式</h2>
   <div class="card small" style="display:grid;gap:6px">
     <div>👂 <b>聽力優先</b>：文字先蓋住，聽 2–3 次再點開。速度 0.7x／1x（預設 1x）。每一段也可以按「👁 顯示全文」。</div>
@@ -194,6 +198,7 @@ function viewHome(){
     <div>🔁 <b>跟讀</b>：播一句，留約 1.5 倍時間讓你跟著說，自動下一句。</div>
     <div>🙋 <b>我不會</b>：顯示出處、重點句型和另外兩種說法，加入 📝 複習清單。</div>
     <div>✏️ <b>聽力測驗</b>：聽對方的回答，選出意思。</div>
+    <div>🧩 <b>整句聽力</b>（日本行每日）：照片上的整句話一句一句聽（1x／0.7x／連續播放），再看日文、中文和拆解；也有整句跟讀和測驗。</div>
     <div>🔍 <b>搜尋</b>：日文、假名、中文都可以；打開「🎧 聽力模式」就只聽不看。</div>
   </div>
   ${supportHTML()}
@@ -206,14 +211,17 @@ function viewHome(){
   <div class="foot">語音為 AI 合成（VOICEVOX：玄野武宏＝我、VOICEVOX:No.7、VOICEVOX:冥鳴ひまり、VOICEVOX:雀松朱司＝對方），已調整重音與問句語調；開口練習的另外兩種說法為本 App 自編。實際對話請以現場日本人說法為準。僅供個人學習使用。</div>
   <div style="display:flex;justify-content:flex-end;margin:10px 0 4px;font-size:11px"><a href="https://thwang40.github.io/nh-study/" style="color:#9aa0a6;text-decoration:none">撿角日語 ›</a></div>`;
 }
+function tabsHTML(c, tab){ const cid = c.id, nq = qKeys(c).length;
+  return `<div class="tabs">${c.day?`<a href="#/c/${cid}/g" class="${tab==='g'?'on':''}">📷 照片教學</a>`:''}${nq?`<a href="#/c/${cid}/q" class="${tab==='q'?'on':''}">🧩 整句聽力（${nq}）</a>`:''}<a href="#/c/${cid}/p" class="${tab==='p'?'on':''}">📣 句子（${c.phrases.length}）</a><a href="#/c/${cid}/d" class="${tab==='d'?'on':''}">🎧 對話（${c.dialogues.length}）</a></div>`; }
 function viewCat(cid, tab){
   const c = CAT[cid]; if(!c) return viewHome(); renderSide(cid); reveal = {};
   if(c.day && (!tab || tab==='g')) return viewDay(c);
+  if(tab==='q' && qKeys(c).length) return viewPhr(c);
   tab = tab || 'p';
   const texts = c.phrases.map(p => p.ja).concat(c.dialogues.flatMap(d => d.lines.map(l => l.ja)));
   $('#view').innerHTML = `${crumb([[c.t]])}
   <h1>${c.icon} ${esc(c.t)}</h1>
-  <div class="tabs">${c.day?`<a href="#/c/${cid}/g">📷 照片教學</a>`:''}<a href="#/c/${cid}/p" class="${tab==='p'?'on':''}">📣 句子（${c.phrases.length}）</a><a href="#/c/${cid}/d" class="${tab==='d'?'on':''}">🎧 對話（${c.dialogues.length}）</a></div>
+  ${tabsHTML(c, tab)}
   ${tab==='p' ? `
   <div class="player"><div class="row"><button class="btn" id="playAll">▶ 全部播放</button>${speedSeg()}</div></div>
   ${patListHTML(texts, '這一組的重點句型')}
@@ -230,19 +238,41 @@ function viewCat(cid, tab){
 function qBlock(c, w){ const k = w.id+':q', it = ITEM[k]; if(!it) return '';
   const oth = (it.ws||[]).filter(x => x !== w.ja);
   return `<details class="exs qx"><summary>🧩 整句（照片上的整句話）${oth.length?`<span class="small mute">・和「${oth.map(esc).join('」「')}」同一句</span>`:''}</summary><div class="script exscript" data-blk><div class="blkbar"><button class="bshow" data-act="qplay" data-k="${k}">▶ 1x</button><button class="bshow" data-act="qplay" data-k="${k}" data-slow="1">🐢 0.7x</button>${blkBtn(false)}</div>${rowHTML(it, {num:'整'})}</div></details>`; }
+/* 🧩 整句聽力：這個單元照片上的整句話（每句一次）。先聽（▶ 1x／🐢 0.7x／🔁），截圖先模糊；點文字＝日文＋假名＋romaji → 中文＋拆解 → 隱藏 */
+const QMODES = [['1', '每句 1 次'], ['2', '每句 2 次'], ['sn', '🐢 慢→正常']];
+function viewPhr(c){ const cid = c.id, ks = qKeys(c); reveal = {};
+  if(!QMODES.some(m => m[0] === S.qMode)) S.qMode = '1';
+  $('#view').innerHTML = `${crumb([[c.t, '#/c/'+cid], ['🧩 整句聽力']])}
+  <h1>${c.icon} ${esc(c.t)}</h1>
+  ${tabsHTML(c, 'q')}
+  <p class="small mute">照片上的整句話（${ks.length} 句，同一句的單字只出現一次）。先只聽：▶ 1x、🐢 0.7x、🔁 重複三次；截圖先模糊。點文字：第 1 次＝日文＋假名＋romaji（截圖變清楚），第 2 次＝中文＋🧩 拆解，第 3 次再隱藏。</p>
+  <div class="player"><div class="row"><button class="btn" id="qAll">▶ 連續播放</button>${speedSeg()}<div class="seg" role="group" aria-label="播放方式">${QMODES.map(([v, t]) => `<button data-qm="${v}" class="${S.qMode===v?'on':''}">${t}</button>`).join('')}</div></div></div>
+  <div class="row" style="margin:6px 0 10px"><a class="btn sm alt" style="text-decoration:none" href="#/sh/${cid}-q">🔁 整句跟讀</a><a class="btn sm ghost" style="text-decoration:none" href="#/q/${cid}-q">✏️ 整句聽力測驗</a><a class="btn sm ghost" style="text-decoration:none" href="#/c/${cid}/g">📷 回照片教學</a></div>
+  <div class="qlist">${ks.map((k, i) => `<div class="qitem script" data-blk><div class="blkbar"><span class="small mute qsrc">📷 ${esc(c.scenes[ITEM[k].sc].t)}・「${esc(ITEM[k].word)}」</span><button class="bshow" data-act="qplay" data-k="${k}">▶ 1x</button><button class="bshow" data-act="qplay" data-k="${k}" data-slow="1">🐢 0.7x</button>${blkBtn(false)}</div>${rowHTML(ITEM[k], {num:i+1})}</div>`).join('')}</div>
+  <div class="small mute" style="margin-top:6px">🔊 播放　🔁 重複三次　🎙 錄音對比／辨識　🙋 我不會（看出處、加入 📝 複習清單）</div>
+  ${nav(cid)}`;
+  document.querySelectorAll('[data-qm]').forEach(b => b.onclick = () => { S.qMode = b.dataset.qm; save(); document.querySelectorAll('[data-qm]').forEach(x => x.classList.toggle('on', x === b)); });
+  const pa = $('#qAll'); pa.onclick = () => { if(pa.textContent.includes('停止')){ stopAll(); pa.textContent = '▶ 連續播放'; return; } pa.textContent = '⏹ 停止';
+    playQAll(ks).then(() => { pa.textContent = '▶ 連續播放'; }); };
+}
+async function playQAll(ks){ stopAll(); const t = token;
+  for(const k of ks){ const it = ITEM[k];
+    const runs = S.qMode === 'sn' ? [true, false] : Array(S.qMode === '2' ? 2 : 1).fill(undefined);
+    for(const slow of runs){ if(t !== token) return false; mark(k); const ok = await playEl(audio, src(it.a, slow)); if(t !== token) return false; mark(null); if(!ok){ toast('音檔播放失敗'); return false; } await wait(900); } await wait(500); }
+  return t === token; }
 /* 🗾 日本行每日：照片教學頁（場景：照片 → 照片裡的日文 → 說明 → 這個場景的句子（聽力優先）→ 展會會話可以直接用）→ 對話 → 今日 5 句必背 */
 function viewDay(c){
   const cid = c.id;
   $('#view').innerHTML = `${crumb([[c.t]])}
   <h1>${c.icon} ${esc(c.t)}</h1>
-  <div class="tabs"><a href="#/c/${cid}/g" class="on">📷 照片教學</a><a href="#/c/${cid}/p">📣 句子（${c.phrases.length}）</a><a href="#/c/${cid}/d">🎧 對話（${c.dialogues.length}）</a></div>
+  ${tabsHTML(c, 'g')}
   <p class="small dayintro">${esc(c.intro)}</p>
-  <div class="row" style="margin:4px 0 6px">${speedSeg()}<a class="btn sm alt" style="text-decoration:none" href="#m5" data-act="gom5">⭐ 今日 5 句必背</a></div>
+  <div class="row" style="margin:4px 0 6px">${speedSeg()}${qKeys(c).length?`<a class="btn sm qbtn" style="text-decoration:none" href="#/c/${cid}/q">🧩 整句聽力（${qKeys(c).length} 句）</a>`:''}<a class="btn sm alt" style="text-decoration:none" href="#m5" data-act="gom5">⭐ 今日 5 句必背</a></div>
   ${c.scenes.map((sc, si) => `<section class="dsc" id="sc${si}">
     <h2>${esc(sc.t)}</h2>
     <div class="pstrip">${sc.imgs.map(([u, cap]) => `<figure><img src="${esc(u)}" alt="${esc(cap)}" loading="lazy" decoding="async" data-act="zoom" data-src="${esc(u)}" data-cap="${esc(cap)}"><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>
     <details class="words" open><summary>📷 照片裡的日文（${sc.words.length}）<span class="small mute">・先聽再看，每個字有 3 個例句</span></summary>
-      <div class="script wscript" data-blk><div class="blkbar"><button class="bshow" data-act="wplay" data-si="${si}">▶ 播放單字</button>${blkBtn(false)}</div>
+      <div class="script wscript" data-blk><div class="blkbar"><button class="bshow" data-act="wplay" data-si="${si}">▶ 播放單字</button>${blkBtn(false)}${qKeys(c).length?`<a class="bshow qlink" href="#/c/${cid}/q">🧩 整句聽力</a>`:''}</div>
       ${sc.words.map((w, wi) => rowHTML(ITEM[w.id], {num:wi+1}) + qBlock(c, w) + `<details class="exs"><summary>例句（${w.ex.length}）</summary><div class="script exscript" data-blk><div class="blkbar"><button class="bshow" data-act="xplay" data-w="${w.id}">▶ 播放例句</button>${blkBtn(false)}</div>${w.ex.map((x, k) => rowHTML(ITEM[x.id], {num:'①②③④⑤'[k]})).join('')}</div></details>`).join('')}</div></details>
     <div class="tipbox">💡 ${esc(sc.tip)}</div>
     <div class="script" data-blk><div class="blkbar"><button class="bshow" data-act="scplay" data-si="${si}">▶ 播放這個場景</button>${blkBtn(false)}</div>${sc.ids.map((id, i) => rowHTML(ITEM[id], {num:i+1})).join('')}</div>
@@ -291,12 +321,12 @@ let curStageKey = null, SH = null;
 function renderStageSp(){ const b = $('#stageRes'); if(!b || !curStageKey) return; const r = b.querySelector('.res'); const keep = r ? r.innerHTML : '';
   b.innerHTML = spHTML(curStageKey).replace('<div class="sp">','<div class="sp" style="margin-top:12px">'); if(keep && recKey!==curStageKey) b.querySelector('.res').innerHTML = keep; }
 function viewShadow(scope){
-  const m5 = /-m5$/.test(scope) && CAT[scope.slice(0, -3)];
-  const list = scope==='all' ? J.cats.flatMap(c=>c.phrases.map(p=>p.id)) : m5 ? m5.m5.map(m => m[0]) : (CAT[scope] ? CAT[scope].phrases.map(p=>p.id) : null);
-  if(!list) return viewHome(); renderSide(scope==='all'?'sh':m5?m5.id:scope);
+  const m5 = /-m5$/.test(scope) && CAT[scope.slice(0, -3)], qc = /-q$/.test(scope) && CAT[scope.slice(0, -2)];
+  const list = scope==='all' ? J.cats.flatMap(c=>c.phrases.map(p=>p.id)) : scope==='allq' ? DAYS.flatMap(qKeys) : m5 ? m5.m5.map(m => m[0]) : qc ? qKeys(qc) : (CAT[scope] ? CAT[scope].phrases.map(p=>p.id) : null);
+  if(!list || !list.length) return viewHome(); renderSide(scope==='all'||scope==='allq'?'sh':m5?m5.id:qc?qc.id:scope);
   SH = {list, i:0, on:false, lv:0};
-  $('#view').innerHTML = `${crumb(scope==='all'?[['全部跟讀']]:m5?[[m5.t,'#/c/'+m5.id],['今日 5 句必背・跟讀']]:[[CAT[scope].t,'#/c/'+scope],['跟讀']])}
-  <h1>🔁 跟讀（Shadowing）${scope==='all'?'・全部':m5?'・今日 5 句必背':''}</h1>
+  $('#view').innerHTML = `${crumb(scope==='all'?[['全部跟讀']]:scope==='allq'?[['🧩 全部整句跟讀']]:m5?[[m5.t,'#/c/'+m5.id],['今日 5 句必背・跟讀']]:qc?[[qc.t,'#/c/'+qc.id],['🧩 整句聽力','#/c/'+qc.id+'/q'],['跟讀']]:[[CAT[scope].t,'#/c/'+scope],['跟讀']])}
+  <h1>🔁 跟讀（Shadowing）${scope==='all'?'・全部':scope==='allq'?'・🧩 全部整句':m5?'・今日 5 句必背':qc?'・🧩 整句':''}</h1>
   <p class="small mute">播放示範 → 進度條跑完前（約 1.5 倍時間）換你大聲跟著說 → 自動下一句。文字先蓋住，點一下才顯示。</p>
   <div class="row">${speedSeg()}<div class="seg"><button data-shr="1" class="${S.shReps==1?'on':''}">每句 1 次</button><button data-shr="2" class="${S.shReps==2?'on':''}">2 次</button><button data-shr="3" class="${S.shReps==3?'on':''}">3 次</button></div></div>
   <div class="stage" id="stage"></div>
@@ -446,22 +476,24 @@ document.addEventListener('click', async e => {
 /* ---------- quiz ---------- */
 let Q = null;
 const shuffle = a => { a = a.slice(); for(let i=a.length-1;i>0;i--){ const j = Math.floor(Math.random()*(i+1)); [a[i],a[j]] = [a[j],a[i]]; } return a; };
-function viewQuiz(cid){
-  const c = CAT[cid]; if(!c) return viewHome(); renderSide(cid);
+function viewQuiz(arg){
+  const qm = /-q$/.test(arg||''), cid = qm ? arg.slice(0, -2) : arg;
+  const c = CAT[cid]; if(!c || (qm && !qKeys(c).length)) return viewHome(); renderSide(cid);
   const staff = c.dialogues.flatMap(d => d.lines.map((l,i)=>d.id+':'+i).filter(k => ITEM[k].r!=='me'));
   const phr = c.phrases.map(p=>p.id);
-  const pickKeys = shuffle(staff).slice(0, 6).concat(shuffle(phr).slice(0, Math.max(3, 8-Math.min(6, staff.length))));
-  const all = Object.values(ITEM);
+  // 🧩 整句聽力測驗：題目＝這個單元的整句，選項＝其他整句
+  const pickKeys = qm ? shuffle(qKeys(c)).slice(0, 10) : shuffle(staff).slice(0, 6).concat(shuffle(phr).slice(0, Math.max(3, 8-Math.min(6, staff.length))));
+  const all = qm ? DAYS.flatMap(qKeys).map(k => ITEM[k]) : Object.values(ITEM).filter(x => !(x.kind==='q' && x.key.includes(':')));
   const qs = shuffle(pickKeys).map((k, n) => { const it = ITEM[k]; const type = n%3===2 ? 'hear' : 'mean'; const f = type==='hear' ? 'ja' : 'zh';
     const same = shuffle(all.filter(x => x.cat===it.cat && x[f]!==it[f])), other = shuffle(all.filter(x => x[f]!==it[f]));
     const opts = []; const seen = new Set([it[f]]); for(const x of same.concat(other)){ if(opts.length>=3) break; if(!seen.has(x[f])){ seen.add(x[f]); opts.push(x[f]); } }
     return {k, type, ans: it[f], opts: shuffle(opts.concat([it[f]]))}; });
-  Q = {cid, qs, i:0, score:0}; renderQ();
+  Q = {cid, qs, i:0, score:0, qm, arg}; renderQ();
 }
 function renderQ(){
   const q = Q.qs[Q.i], it = ITEM[q.k], c = CAT[Q.cid];
   $('#view').innerHTML = `${crumb([[c.t,'#/c/'+c.id],['聽力測驗']])}
-  <h1>✏️ ${esc(c.t)}・聽力測驗</h1><div class="small mute">第 ${Q.i+1} / ${Q.qs.length} 題・答對 ${Q.score}</div><div class="bar"><i style="width:${Q.i/Q.qs.length*100}%"></i></div>
+  <h1>✏️ ${esc(c.t)}・${Q.qm?'🧩 整句':''}聽力測驗</h1><div class="small mute">第 ${Q.i+1} / ${Q.qs.length} 題・答對 ${Q.score}</div><div class="bar"><i style="width:${Q.i/Q.qs.length*100}%"></i></div>
   <div class="card" style="margin-top:10px"><div class="q">${q.type==='hear'?'🎧 你聽到的是哪一句？':(it.r==='me'?'🎧 這句話是什麼意思？':'🎧 對方說了什麼？')}</div>
   <div class="row" style="margin-bottom:10px"><button class="btn" id="qPlay">🔊 再聽一次</button>${speedSeg()}</div>
   <div class="opts">${q.opts.map((o,i)=>`<button class="opt ${q.type==='hear'?'jp':''}" data-o="${i}">${esc(o)}</button>`).join('')}</div>
@@ -476,11 +508,12 @@ function ansQ(ch, btn){
   document.querySelectorAll('.opt').forEach(b => { b.disabled = true; if(q.opts[+b.dataset.o]===q.ans) b.classList.add('right'); }); if(btn && !ok) btn.classList.add('wrong'); $('#qIdk').disabled = true;
   if(ok) Q.score++; else { S.review[q.k] = {n:((S.review[q.k]||{}).n||0)+1, t:Date.now()}; save(); }
   $('#qFb').innerHTML = `<div class="result ${ok?'good':'bad'}">${ok?'⭕ 答對了！':'再聽一次，對照文字 👇（已加入複習清單）'}</div><div class="ja">${hiJa(it.ja)}</div><div class="kana">${esc(it.kana)}</div><div class="ro">${esc(it.ro)}</div><div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}
-  <div class="small mute" style="margin-top:4px">出自：${esc(CAT[it.cat].t)}${it.d?'・對話「'+esc(DLG[it.d].t)+'」':'・句子'}</div>
+  ${it.bd?`<div class="bd"><div class="bdh">🧩 這句話怎麼拆</div><ul>${it.bd.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`:''}
+  <div class="small mute" style="margin-top:4px">出自：${esc(CAT[it.cat].t)}${it.d?'・對話「'+esc(DLG[it.d].t)+'」':it.kind==='q'?'・照片整句（'+esc(it.ws.join('・'))+'）':'・句子'}</div>
   <div class="row" style="margin-top:10px"><button class="btn" id="qNext">${Q.i+1<Q.qs.length?'下一題 ›':'看結果'}</button></div>`;
-  $('#qNext').onclick = () => { stopAll(); Q.i++; if(Q.i < Q.qs.length) renderQ(); else { const pct = Math.round(Q.score/Q.qs.length*100); S.quiz[Q.cid] = Math.max(S.quiz[Q.cid]||0, pct); save();
+  $('#qNext').onclick = () => { stopAll(); Q.i++; if(Q.i < Q.qs.length) renderQ(); else { const pct = Math.round(Q.score/Q.qs.length*100); S.quiz[Q.arg] = Math.max(S.quiz[Q.arg]||0, pct); save();
     $('#view').innerHTML = `${crumb([[CAT[Q.cid].t,'#/c/'+Q.cid],['結果']])}<h1>結果</h1><div class="card"><div style="font-size:40px;font-weight:800;color:${pct>=80?'var(--ok)':'var(--alert)'}">${pct}%</div><div>答對 ${Q.score} / ${Q.qs.length}</div>
-    <div class="row" style="margin-top:12px"><button class="btn" id="again">再測一次</button><a class="btn ghost" style="text-decoration:none" href="#/c/${Q.cid}/d">回對話</a></div></div>`; $('#again').onclick = () => viewQuiz(Q.cid); } };
+    <div class="row" style="margin-top:12px"><button class="btn" id="again">再測一次</button><a class="btn ghost" style="text-decoration:none" href="#/c/${Q.cid}/${Q.qm?'q':'d'}">${Q.qm?'回整句聽力':'回對話'}</a></div></div>`; $('#again').onclick = () => viewQuiz(Q.arg); } };
 }
 
 /* ---------- 🔍 搜尋（日文／假名／中文；片假名＝平假名、全形半形、忽略標點） ---------- */
@@ -501,7 +534,7 @@ function buildIndex(){ const I = [];
     c.dialogues.forEach(d => d.lines.forEach((l, i) => I.push(sqItem({t:'對話', cat:c.id, ja:l.ja, kana:l.kana, ro:l.ro, zh:l.zh, who:who(ITEM[d.id+':'+i]), src:`「${d.t}」`, href:`#/d/${d.id}`, key:d.id+':'+i, au:l.a}))));
     (c.scenes||[]).forEach(sc => sc.words.forEach(w => { I.push(sqItem({t:'單字', cat:c.id, ja:w.ja, kana:w.kana, ro:w.ro, zh:w.zh, who:'', src:sc.t, href:`#/c/${c.id}/g`, key:w.id, au:w.id}));
       w.ex.forEach(x => I.push(sqItem({t:'例句', cat:c.id, ja:x.ja, kana:x.kana, ro:x.ro, zh:x.zh, who:'', src:`「${w.ja}」的例句`, href:`#/c/${c.id}/g`, key:x.id, au:x.id}))); }));
-    (c.qs||[]).forEach(q => { const w0 = (c.scenes||[]).flatMap(sc => sc.words).find(w => w.q != null && c.qs[w.q] === q); if(w0) I.push(sqItem({t:'整句', cat:c.id, ja:q.ja, kana:q.kana, ro:q.ro, zh:q.zh, who:'', src:`照片上的整句（${q.ws.join('・')}）`, href:`#/c/${c.id}/g`, key:w0.id+':q', au:q.id})); });
+    (c.qs||[]).forEach(q => { if(ITEM[q.id]) I.push(sqItem({t:'整句', cat:c.id, ja:q.ja, kana:q.kana, ro:q.ro, zh:q.zh, who:'', src:`🧩 照片上的整句（${q.ws.join('・')}）`, href:`#/c/${c.id}/q`, key:q.id, au:q.id})); });
     const seen = new Set();
     c.dialogues.forEach(d => d.lines.forEach((l, i) => { if(seen.has(l.a)) return; seen.add(l.a); const R = J.rp[l.ja]; if(!R) return;
       R[1].forEach((a, j) => I.push(sqItem({t:'其他說法', cat:c.id, ja:a[0], kana:a[1], ro:a[2], zh:a[3], who:who(ITEM[d.id+':'+i]), src:`「${d.t}」開口練習`, href:`#/d/${d.id}`, key:d.id+':'+i, au:`${l.a}-r_${j}`}))); }));
@@ -624,7 +657,7 @@ async function openSettings(){
     <div><b>這台裝置支援</b>${supportHTML()}<div class="small mute">${isIOS?'iPhone：語音辨識需在「設定 › Siri」開啟 Siri／聽寫，並需要網路；若主畫面 App 模式不能辨識，請改用 Safari 開啟。錄音對比離線也能用。':'Android：請用 Chrome（Samsung Internet 可能不支援語音辨識）。語音辨識需要網路。'}${standalone?'（目前：主畫面 App 模式）':''}</div></div>
     <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 30 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
     <div><b>重設</b><div class="row" style="margin-top:6px"><button class="btn sm ghost" id="rsR">清空複習清單</button><button class="btn sm ghost" id="rs">清除進度與分數</button></div></div></div>
-    <div class="foot">版本 2.6（🗾 日本行每日 10/25・10/26・10/27＋照片單字例句＋單字小截圖＋🧩 照片整句拆解・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
+    <div class="foot">版本 2.7（🗾 日本行每日 10/25・10/26・10/27＋照片單字例句＋單字小截圖＋🧩 照片整句拆解＋🧩 整句聽力・大截圖・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
   $('#sheet').classList.remove('hidden'); $('#ci').innerHTML = await cacheStatus();
   document.querySelectorAll('[data-kana]').forEach(b => b.onclick = () => { S.showKana = b.dataset.kana==='1'; save(); openSettings(); route(true); });
   document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { S.showRomaji = b.dataset.ro==='1'; save(); openSettings(); route(true); });

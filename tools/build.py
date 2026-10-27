@@ -7,7 +7,7 @@ from jt_content import CATS
 from jt_rp import RP, PATTERNS, PARTNER
 from romaji import romaji
 from jt_daily import DAYS, RP_D, PAT_D, rj
-from jt_phrases import PHR_D   # 📷 整句（單字來自照片上的一整句話時）
+from jt_phrases import PHR_D, qphoto   # 📷 整句（單字來自照片上的一整句話時）
 ROOT = os.path.join(T, '..')
 # 單字的唸法：（）／ 換成停頓
 say_word = lambda t: t.replace('（', '、').replace('）', '').replace('／', '、')
@@ -62,6 +62,11 @@ def build():
             D = c['day']; n = 0; scenes = []
             QS = PHR_D.get(c['id'], []); QW = {w: qi for qi, q in enumerate(QS) for w in q['w']}
             qs = [dict(id=f"{c['id']}q{qi}", ja=q['ja'], kana=q['kana'], ro=q.get('ro') or rj(q['kana']), zh=q['zh'], bd=q['bd'], cut=q.get('cut', ''), ws=q['w']) for qi, q in enumerate(QS)]
+            for qi, q in enumerate(QS):   # 🧩 整句截圖（tools/crops.py 產生 img/<day>/q/<id>.webp）
+                f = os.path.join(ROOT, 'img', c['id'], 'q', qs[qi]['id'] + '.webp')
+                if os.path.exists(f):
+                    qs[qi]['th'] = f"img/{c['id']}/q/{qs[qi]['id']}.webp?v=" + hashlib.md5(open(f, 'rb').read()).hexdigest()[:8]
+                    ph = qphoto(q, D.get('crops', {})); qs[qi]['thc'] = dict(i for sc in D['scenes'] for i in sc['imgs']).get(ph, '')
             for qi, q in enumerate(QS): lines_all.append(dict(id=f"{c['id']}q{qi}", ja=q.get('say', q['ja']), kana=q['kana'], v='f'))
             _allw = {w[0] for sc in D['scenes'] for w in sc['words']}
             assert all(w in _allw for q in QS for w in q['w']), ('整句的單字要跟 DAYS 一樣', [w for q in QS for w in q['w'] if w not in _allw])
@@ -106,7 +111,8 @@ if __name__ == '__main__':
     audio = sorted({x['id'] for x in AL})
     files = [f'audio/{a}{s}.mp3' for a in audio + [x['id'] for x in RALT] for s in ('', '_s')]
     imgs = [u for c in cats for sc in c.get('scenes', []) for u, _ in sc['imgs']] + \
-           [w['th'] for c in cats for sc in c.get('scenes', []) for w in sc['words'] if w.get('th')]
+           [w['th'] for c in cats for sc in c.get('scenes', []) for w in sc['words'] if w.get('th')] + \
+           [q['th'] for c in cats for q in c.get('qs', []) if q.get('th')]
     data = dict(cats=cats, audio=audio, rp=RPD, pat=[list(p) for p in PATTERNS], files=files, imgs=imgs)
     open(os.path.join(ROOT, 'data.js'), 'w').write('window.JT=' + json.dumps(data, ensure_ascii=False, separators=(',', ':')) + ';\n')
     print('phrases', sum(len(c['phrases']) for c in cats), 'dialogues', sum(len(c['dialogues']) for c in cats),
