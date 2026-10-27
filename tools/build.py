@@ -7,6 +7,7 @@ from jt_content import CATS
 from jt_rp import RP, PATTERNS, PARTNER
 from romaji import romaji
 from jt_daily import DAYS, RP_D, PAT_D, rj
+from jt_phrases import PHR_D   # 📷 整句（單字來自照片上的一整句話時）
 ROOT = os.path.join(T, '..')
 # 單字的唸法：（）／ 換成停頓
 say_word = lambda t: t.replace('（', '、').replace('）', '').replace('／', '、')
@@ -59,6 +60,11 @@ def build():
         cat = dict(id=c['id'], icon=c['icon'], t=c['t'], phrases=phrases, dialogues=dls)
         if c.get('day'):
             D = c['day']; n = 0; scenes = []
+            QS = PHR_D.get(c['id'], []); QW = {w: qi for qi, q in enumerate(QS) for w in q['w']}
+            qs = [dict(id=f"{c['id']}q{qi}", ja=q['ja'], kana=q['kana'], ro=q.get('ro') or rj(q['kana']), zh=q['zh'], bd=q['bd'], cut=q.get('cut', ''), ws=q['w']) for qi, q in enumerate(QS)]
+            for qi, q in enumerate(QS): lines_all.append(dict(id=f"{c['id']}q{qi}", ja=q.get('say', q['ja']), kana=q['kana'], v='f'))
+            _allw = {w[0] for sc in D['scenes'] for w in sc['words']}
+            assert all(w in _allw for q in QS for w in q['w']), ('整句的單字要跟 DAYS 一樣', [w for q in QS for w in q['w'] if w not in _allw])
             for sc in D['scenes']:
                 ids = [f"{c['id']}_{n+i}" for i in range(len(sc['phrases']))]; n += len(sc['phrases'])
                 refs = [[ALLP[ja][0], why] for ja, why in sc['refs']]
@@ -71,6 +77,7 @@ def build():
                     if cr and os.path.exists(os.path.join(ROOT, 'img', c['id'], 'w', wid + '.webp')):
                         wo['th'] = f"img/{c['id']}/w/{wid}.webp?v=" + hashlib.md5(open(os.path.join(ROOT, 'img', c['id'], 'w', wid + '.webp'), 'rb').read()).hexdigest()[:8]; wo['thc'] = dict(sc['imgs']).get(cr[0], '')
                         if 'fallback' in cr[2:]: wo['fb'] = 1
+                    if w[0] in QW: wo['q'] = QW[w[0]]
                     lines_all.append(dict(id=wid, ja=say_word(w[0]), kana=w[1], v='f'))
                     for k, e in enumerate(w[3]):
                         xid = f"{wid}x{k}"
@@ -80,7 +87,7 @@ def build():
                 scenes.append(dict(t=sc['t'], imgs=[[f"img/{c['id']}/{f}.webp", cap] for f, cap in sc['imgs']],
                                    words=words, tip=sc['tip'], ids=ids, refs=refs))
             P = {p['ja']: p['id'] for p in phrases}
-            cat.update(day=1, date=D['date'], intro=D['intro'], scenes=scenes, m5=[[P[ja], use] for ja, use in D['must5']])
+            cat.update(day=1, date=D['date'], intro=D['intro'], scenes=scenes, qs=qs, m5=[[P[ja], use] for ja, use in D['must5']])
         cats.append(cat)
     return cats, lines_all
 cats, AL = build()

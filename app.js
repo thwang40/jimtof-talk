@@ -18,7 +18,9 @@ J.cats.forEach(c => { CAT[c.id] = c;
   // 日本行每日：照片裡的日文（單字）與每個單字的 3 個例句
   (c.scenes||[]).forEach((sc, si) => sc.words.forEach((w, wi) => {
     ITEM[w.id] = Object.assign({key:w.id, r:'me', a:w.id, cat:c.id, n:wi, sc:si, kind:'w', word:w.ja}, w, {ex:undefined});
-    w.ex.forEach((x, k) => ITEM[x.id] = Object.assign({key:x.id, r:'me', a:x.id, cat:c.id, n:k, sc:si, kind:'x', word:w.ja, note:''}, x)); })); });
+    w.ex.forEach((x, k) => ITEM[x.id] = Object.assign({key:x.id, r:'me', a:x.id, cat:c.id, n:k, sc:si, kind:'x', word:w.ja, note:''}, x));
+    // 🧩 整句：照片上這個字所在的整句話（同一句的單字共用同一個音檔；每張單字卡各有一列）
+    if(w.q != null && c.qs && c.qs[w.q]) ITEM[w.id+':q'] = Object.assign({key:w.id+':q', r:'me', cat:c.id, n:wi, sc:si, kind:'q', word:w.ja, note:''}, c.qs[w.q], {a:c.qs[w.q].id}); })); });
 const ME = '王';
 const DAYS = J.cats.filter(c => c.day);
 const who = it => it.r === 'me' ? ME : (it.d ? DLG[it.d].pn : '對方');
@@ -118,7 +120,8 @@ function maskHTML(t){ const n = Math.max(3, [...t].length), per = 22; let h = ''
 function textBody(it, lv){
   if(lv < 1) return maskHTML(it.ja);
   return `<div class="ja">${hiJa(it.ja)}</div>${S.showKana?`<div class="kana">${esc(it.kana)}</div>`:''}${S.showRomaji?`<div class="ro">${esc(it.ro)}</div>`:''}${it.L?`<div class="les">📘 ${esc(it.L)}</div>`:''}` +
-    (lv >= 2 ? `<div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}` : ''); }
+    (it.cut ? `<div class="cut">✂️ ${esc(it.cut)}</div>` : '') +
+    (lv >= 2 ? `<div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}${it.bd?`<div class="bd"><div class="bdh">🧩 這句話怎麼拆</div><ul>${it.bd.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`:''}` : ''); }
 // 書本式一行：左＝說話者（句子頁＝編號），中＝台詞（先遮住），右＝🔊 🔁 🎙 🙋
 function rowHTML(it, opts={}){
   const lv = reveal[it.key]||0, me = it.r === 'me';
@@ -150,7 +153,7 @@ function spRes(key, html){ const b = document.querySelector(`#sp-${kid(key)} .re
 function srcHTML(key){ const it = ITEM[key], c = CAT[it.cat], d = it.d ? DLG[it.d] : null;
   const ps = patsIn([it.ja]); const R = J.rp[it.ja];
   return `<div class="src"><button class="srcx" data-act="srcclose" data-k="${key}">收起 ▲</button>
-    <div><b>出處</b>：${c.icon} ${esc(c.t)} › ${it.kind ? `<a href="#/c/${c.id}/g">${esc(c.scenes[it.sc].t)}</a> › 照片裡的日文「${esc(it.word)}」${it.kind==='x'?` 例句 ${it.n+1}`:''}` : d ? `<a href="#/d/${d.id}">對話「${esc(d.t)}」</a>第 ${it.n+1} 句（${esc(who(it))}）` : `<a href="#/c/${c.id}/p">句子</a> 第 ${it.n+1} 句`}</div>
+    <div><b>出處</b>：${c.icon} ${esc(c.t)} › ${it.kind ? `<a href="#/c/${c.id}/g">${esc(c.scenes[it.sc].t)}</a> › 照片裡的日文「${esc(it.word)}」${it.kind==='x'?` 例句 ${it.n+1}`:it.kind==='q'?' 整句':''}` : d ? `<a href="#/d/${d.id}">對話「${esc(d.t)}」</a>第 ${it.n+1} 句（${esc(who(it))}）` : `<a href="#/c/${c.id}/p">句子</a> 第 ${it.n+1} 句`}</div>
     ${it.note?`<div style="margin-top:6px">💡 ${esc(it.note)}</div>`:''}
     ${ps.length?`<div class="srch"><b>重點句型</b>${ps.map(p => `<div class="gent"><b class="kp">${esc(p[1])}</b> <span class="small mute">${esc(p[2])}</span></div>`).join('')}</div>`:''}
     ${R?`<div class="srch"><b>也可以這樣說</b>${R[1].map((a, j) => `<div class="alt"><button class="ibtn s" data-act="altplay" data-a="${esc(it.a)}-r_${j}" aria-label="播放">🔊</button><div><div class="ja">${hiJa(a[0])}</div>${S.showKana?`<div class="kana">${esc(a[1])}</div>`:''}<div class="zh">${esc(a[3])}</div></div></div>`).join('')}</div>`:''}
@@ -223,6 +226,10 @@ function viewCat(cid, tab){
   ${nav(cid)}`;
   const pa = $('#playAll'); if(pa) pa.onclick = () => { if(pa.textContent.includes('停止')){ stopAll(); pa.textContent='▶ 全部播放'; return; } pa.textContent='⏹ 停止'; playSeq(c.phrases.map(p=>p.id), 900).then(()=>{ pa.textContent='▶ 全部播放'; }); };
 }
+// 🧩 整句：單字來自照片上的一整句話時，單字卡下面可以展開整句（先聽：1x／0.7x，點一下才顯示日文；再點一下＝中文＋拆解）
+function qBlock(c, w){ const k = w.id+':q', it = ITEM[k]; if(!it) return '';
+  const oth = (it.ws||[]).filter(x => x !== w.ja);
+  return `<details class="exs qx"><summary>🧩 整句（照片上的整句話）${oth.length?`<span class="small mute">・和「${oth.map(esc).join('」「')}」同一句</span>`:''}</summary><div class="script exscript" data-blk><div class="blkbar"><button class="bshow" data-act="qplay" data-k="${k}">▶ 1x</button><button class="bshow" data-act="qplay" data-k="${k}" data-slow="1">🐢 0.7x</button>${blkBtn(false)}</div>${rowHTML(it, {num:'整'})}</div></details>`; }
 /* 🗾 日本行每日：照片教學頁（場景：照片 → 照片裡的日文 → 說明 → 這個場景的句子（聽力優先）→ 展會會話可以直接用）→ 對話 → 今日 5 句必背 */
 function viewDay(c){
   const cid = c.id;
@@ -236,7 +243,7 @@ function viewDay(c){
     <div class="pstrip">${sc.imgs.map(([u, cap]) => `<figure><img src="${esc(u)}" alt="${esc(cap)}" loading="lazy" decoding="async" data-act="zoom" data-src="${esc(u)}" data-cap="${esc(cap)}"><figcaption>${esc(cap)}</figcaption></figure>`).join('')}</div>
     <details class="words" open><summary>📷 照片裡的日文（${sc.words.length}）<span class="small mute">・先聽再看，每個字有 3 個例句</span></summary>
       <div class="script wscript" data-blk><div class="blkbar"><button class="bshow" data-act="wplay" data-si="${si}">▶ 播放單字</button>${blkBtn(false)}</div>
-      ${sc.words.map((w, wi) => rowHTML(ITEM[w.id], {num:wi+1}) + `<details class="exs"><summary>例句（${w.ex.length}）</summary><div class="script exscript" data-blk><div class="blkbar"><button class="bshow" data-act="xplay" data-w="${w.id}">▶ 播放例句</button>${blkBtn(false)}</div>${w.ex.map((x, k) => rowHTML(ITEM[x.id], {num:'①②③④⑤'[k]})).join('')}</div></details>`).join('')}</div></details>
+      ${sc.words.map((w, wi) => rowHTML(ITEM[w.id], {num:wi+1}) + qBlock(c, w) + `<details class="exs"><summary>例句（${w.ex.length}）</summary><div class="script exscript" data-blk><div class="blkbar"><button class="bshow" data-act="xplay" data-w="${w.id}">▶ 播放例句</button>${blkBtn(false)}</div>${w.ex.map((x, k) => rowHTML(ITEM[x.id], {num:'①②③④⑤'[k]})).join('')}</div></details>`).join('')}</div></details>
     <div class="tipbox">💡 ${esc(sc.tip)}</div>
     <div class="script" data-blk><div class="blkbar"><button class="bshow" data-act="scplay" data-si="${si}">▶ 播放這個場景</button>${blkBtn(false)}</div>${sc.ids.map((id, i) => rowHTML(ITEM[id], {num:i+1})).join('')}</div>
     ${sc.refs.length ? `<div class="refbox"><div class="refhd">🏭 展會會話可以直接用</div>${sc.refs.map(([k, why]) => `<div class="refwhy small">${esc(CAT[ITEM[k].cat].icon)} ${esc(CAT[ITEM[k].cat].t)}：${esc(why)}</div><div class="script">${rowHTML(ITEM[k], {num:'展'})}</div>`).join('')}</div>` : ''}
@@ -272,7 +279,7 @@ function viewDlg(did){
 function viewReview(){
   renderSide('review'); reveal = {};
   const ks = Object.keys(S.review).filter(k => ITEM[k]).sort((a, b) => (S.review[b].t||0) - (S.review[a].t||0));
-  curRowOpts = k => ({extra: `<div class="reveal-actions"><span class="small mute">${esc(CAT[ITEM[k].cat].t)}${ITEM[k].d?'・'+esc(DLG[ITEM[k].d].t):ITEM[k].kind==='w'?'・照片單字':ITEM[k].kind==='x'?'・「'+esc(ITEM[k].word)+'」例句':'・句子'}</span><button class="btn sm ok" data-act="got" data-k="${k}">✓ 我會了</button></div>`});
+  curRowOpts = k => ({extra: `<div class="reveal-actions"><span class="small mute">${esc(CAT[ITEM[k].cat].t)}${ITEM[k].d?'・'+esc(DLG[ITEM[k].d].t):ITEM[k].kind==='w'?'・照片單字':ITEM[k].kind==='x'?'・「'+esc(ITEM[k].word)+'」例句':ITEM[k].kind==='q'?'・「'+esc(ITEM[k].word)+'」整句':'・句子'}</span><button class="btn sm ok" data-act="got" data-k="${k}">✓ 我會了</button></div>`});
   $('#view').innerHTML = `${crumb([['複習清單']])}<h1>📝 複習清單（${ks.length}）</h1>
   ${ks.length ? `<div class="player"><div class="row"><button class="btn" id="playAll">▶ 全部播放</button>${speedSeg()}</div></div>
   <div class="script" data-blk><div class="blkbar">${blkBtn(false)}</div>${ks.map(k => rowHTML(ITEM[k], curRowOpts(k))).join('')}</div>` : `<div class="card small mute">還沒有。聽不懂的句子按 🙋「我不會」，就會出現在這裡。</div>`}`;
@@ -494,12 +501,13 @@ function buildIndex(){ const I = [];
     c.dialogues.forEach(d => d.lines.forEach((l, i) => I.push(sqItem({t:'對話', cat:c.id, ja:l.ja, kana:l.kana, ro:l.ro, zh:l.zh, who:who(ITEM[d.id+':'+i]), src:`「${d.t}」`, href:`#/d/${d.id}`, key:d.id+':'+i, au:l.a}))));
     (c.scenes||[]).forEach(sc => sc.words.forEach(w => { I.push(sqItem({t:'單字', cat:c.id, ja:w.ja, kana:w.kana, ro:w.ro, zh:w.zh, who:'', src:sc.t, href:`#/c/${c.id}/g`, key:w.id, au:w.id}));
       w.ex.forEach(x => I.push(sqItem({t:'例句', cat:c.id, ja:x.ja, kana:x.kana, ro:x.ro, zh:x.zh, who:'', src:`「${w.ja}」的例句`, href:`#/c/${c.id}/g`, key:x.id, au:x.id}))); }));
+    (c.qs||[]).forEach(q => { const w0 = (c.scenes||[]).flatMap(sc => sc.words).find(w => w.q != null && c.qs[w.q] === q); if(w0) I.push(sqItem({t:'整句', cat:c.id, ja:q.ja, kana:q.kana, ro:q.ro, zh:q.zh, who:'', src:`照片上的整句（${q.ws.join('・')}）`, href:`#/c/${c.id}/g`, key:w0.id+':q', au:q.id})); });
     const seen = new Set();
     c.dialogues.forEach(d => d.lines.forEach((l, i) => { if(seen.has(l.a)) return; seen.add(l.a); const R = J.rp[l.ja]; if(!R) return;
       R[1].forEach((a, j) => I.push(sqItem({t:'其他說法', cat:c.id, ja:a[0], kana:a[1], ro:a[2], zh:a[3], who:who(ITEM[d.id+':'+i]), src:`「${d.t}」開口練習`, href:`#/d/${d.id}`, key:d.id+':'+i, au:`${l.a}-r_${j}`}))); }));
   });
   return SIDX = I; }
-const SQ_BADGE = {'句子':'txt', '對話':'g', '其他說法':'xt', '單字':'txt', '例句':'g'};
+const SQ_BADGE = {'句子':'txt', '對話':'g', '其他說法':'xt', '單字':'txt', '例句':'g', '整句':'xt'};
 function searchFormHTML(q, cls){ return `<form class="sform${cls?' '+cls:''}" role="search" data-sform><input type="search" name="q" value="${esc(q||'')}" placeholder="搜尋日文、假名或中文（例：めいし、名片）" aria-label="搜尋" enterkeyhint="search" autocomplete="off"><button class="btn sm" type="submit">🔍 搜尋</button></form>`; }
 let SVIEW = [], SREV = {}, sAllOn = false;
 function sTextHTML(o, lv, nq){
@@ -566,6 +574,7 @@ document.addEventListener('click', e => {
     const ids = a==='wplay' ? c.scenes[+b.dataset.si].words.map(w => w.id) : ITEM[b.dataset.w] && c.scenes[ITEM[b.dataset.w].sc].words.find(w => w.id===b.dataset.w).ex.map(x => x.id);
     const lab = a==='wplay' ? '▶ 播放單字' : '▶ 播放例句'; if(!ids) return;
     if(b.textContent.includes('停止')){ stopAll(); b.textContent = lab; return; } b.textContent = '⏹ 停止'; playSeq(ids, 900).then(() => { b.textContent = lab; }); }
+  else if(a==='qplay'){ const it = ITEM[k]; if(!it) return; stopAll(); const t = token; mark(k); playEl(audio, src(it.a, b.dataset.slow === '1')).then(ok => { if(t === token) mark(null); if(!ok) toast('音檔播放失敗'); }); }
   else if(a==='gom5'){ e.preventDefault(); const t = document.getElementById('m5'); if(t) t.scrollIntoView({behavior:'smooth'}); }
   else if(a==='altplay'){ stopAll(); playEl(audio, src(b.dataset.a)); }
   else if(a==='got'){ delete S.review[k]; save(); toast('太棒了！已從複習清單移除'); const y = scrollY; viewReview(); window.scrollTo(0, y); }
@@ -615,7 +624,7 @@ async function openSettings(){
     <div><b>這台裝置支援</b>${supportHTML()}<div class="small mute">${isIOS?'iPhone：語音辨識需在「設定 › Siri」開啟 Siri／聽寫，並需要網路；若主畫面 App 模式不能辨識，請改用 Safari 開啟。錄音對比離線也能用。':'Android：請用 Chrome（Samsung Internet 可能不支援語音辨識）。語音辨識需要網路。'}${standalone?'（目前：主畫面 App 模式）':''}</div></div>
     <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 30 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
     <div><b>重設</b><div class="row" style="margin-top:6px"><button class="btn sm ghost" id="rsR">清空複習清單</button><button class="btn sm ghost" id="rs">清除進度與分數</button></div></div></div>
-    <div class="foot">版本 2.5（🗾 日本行每日 10/25・10/26・10/27＋照片單字例句＋單字小截圖・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
+    <div class="foot">版本 2.6（🗾 日本行每日 10/25・10/26・10/27＋照片單字例句＋單字小截圖＋🧩 照片整句拆解・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
   $('#sheet').classList.remove('hidden'); $('#ci').innerHTML = await cacheStatus();
   document.querySelectorAll('[data-kana]').forEach(b => b.onclick = () => { S.showKana = b.dataset.kana==='1'; save(); openSettings(); route(true); });
   document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { S.showRomaji = b.dataset.ro==='1'; save(); openSettings(); route(true); });
