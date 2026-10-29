@@ -120,11 +120,17 @@ let reveal = {};   // key -> 0 遮住／1 日文／2 日文＋中文（不儲存
 function maskHTML(t){ const n = Math.max(3, [...t].length), per = 22; let h = '';
   for(let r = n; r > 0; r -= per) h += `<span class="mask" style="width:${Math.min(r, per)*0.95+0.5}em"></span>`;
   return h + `<span class="sr">（點一下顯示日文）</span>`; }
+// 🧩 整句細拆解：預設收合（聽力優先），點標題展開；步驟裡 **粗體** = 關鍵字
+const mdb = t => esc(t).replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+function bdHTML(it){ if(!it.bd) return ''; const E = it.easy;
+  return `<details class="bd" data-act="bdt"><summary class="bdh" data-act="bdt">🧩 這句話怎麼拆（${it.bd.length} 步）</summary><ol>${it.bd.map(t => `<li>${mdb(t)}</li>`).join('')}</ol>` +
+    (it.lit?`<div class="bdl"><b>直譯</b>：${esc(it.lit)}</div>`:'') + `<div class="bdl"><b>自然中文</b>：${esc(it.zh)}</div>` +
+    (E?`<div class="bde"><b>📘 用第 1–12 課可以這樣說</b><div class="alt"><button class="ibtn s" data-act="altplay" data-a="${esc(E.a)}" aria-label="播放簡單說法">🔊</button><div><div class="ja">${hiJa(E.ja)}</div><div class="kana">${esc(E.kana)}</div><div class="zh">${esc(E.zh)}</div></div></div></div>`:'') + `</details>`; }
 function textBody(it, lv){
   if(lv < 1) return maskHTML(it.ja);
   return `<div class="ja">${hiJa(it.ja)}</div>${S.showKana?`<div class="kana">${esc(it.kana)}</div>`:''}${S.showRomaji?`<div class="ro">${esc(it.ro)}</div>`:''}${it.L?`<div class="les">📘 ${esc(it.L)}</div>`:''}` +
     (it.cut ? `<div class="cut">✂️ ${esc(it.cut)}</div>` : '') +
-    (lv >= 2 ? `<div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}${it.bd?`<div class="bd"><div class="bdh">🧩 這句話怎麼拆</div><ul>${it.bd.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`:''}` : ''); }
+    (lv >= 2 ? `<div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}${bdHTML(it)}` : ''); }
 // 書本式一行：左＝說話者（句子頁＝編號），中＝台詞（先遮住），右＝🔊 🔁 🎙 🙋
 function rowHTML(it, opts={}){
   const lv = reveal[it.key]||0, me = it.r === 'me';
@@ -508,7 +514,7 @@ function ansQ(ch, btn){
   document.querySelectorAll('.opt').forEach(b => { b.disabled = true; if(q.opts[+b.dataset.o]===q.ans) b.classList.add('right'); }); if(btn && !ok) btn.classList.add('wrong'); $('#qIdk').disabled = true;
   if(ok) Q.score++; else { S.review[q.k] = {n:((S.review[q.k]||{}).n||0)+1, t:Date.now()}; save(); }
   $('#qFb').innerHTML = `<div class="result ${ok?'good':'bad'}">${ok?'⭕ 答對了！':'再聽一次，對照文字 👇（已加入複習清單）'}</div><div class="ja">${hiJa(it.ja)}</div><div class="kana">${esc(it.kana)}</div><div class="ro">${esc(it.ro)}</div><div class="zh">${esc(it.zh)}</div>${it.note?`<div class="note">💡 ${esc(it.note)}</div>`:''}
-  ${it.bd?`<div class="bd"><div class="bdh">🧩 這句話怎麼拆</div><ul>${it.bd.map(t => `<li>${esc(t)}</li>`).join('')}</ul></div>`:''}
+  ${bdHTML(it)}
   <div class="small mute" style="margin-top:4px">出自：${esc(CAT[it.cat].t)}${it.d?'・對話「'+esc(DLG[it.d].t)+'」':it.kind==='q'?'・照片整句（'+esc(it.ws.join('・'))+'）':'・句子'}</div>
   <div class="row" style="margin-top:10px"><button class="btn" id="qNext">${Q.i+1<Q.qs.length?'下一題 ›':'看結果'}</button></div>`;
   $('#qNext').onclick = () => { stopAll(); Q.i++; if(Q.i < Q.qs.length) renderQ(); else { const pct = Math.round(Q.score/Q.qs.length*100); S.quiz[Q.arg] = Math.max(S.quiz[Q.arg]||0, pct); save();
@@ -657,7 +663,7 @@ async function openSettings(){
     <div><b>這台裝置支援</b>${supportHTML()}<div class="small mute">${isIOS?'iPhone：語音辨識需在「設定 › Siri」開啟 Siri／聽寫，並需要網路；若主畫面 App 模式不能辨識，請改用 Safari 開啟。錄音對比離線也能用。':'Android：請用 Chrome（Samsung Internet 可能不支援語音辨識）。語音辨識需要網路。'}${standalone?'（目前：主畫面 App 模式）':''}</div></div>
     <div><b>離線</b><div class="small" id="ci">檢查中…</div><button class="btn sm ghost" id="dl" style="margin-top:6px">⬇︎ 下載全部離線資料（約 30 MB）</button><div class="small mute" style="margin-top:4px">只下載還沒存的；建議連 Wi-Fi。</div></div>
     <div><b>重設</b><div class="row" style="margin-top:6px"><button class="btn sm ghost" id="rsR">清空複習清單</button><button class="btn sm ghost" id="rs">清除進度與分數</button></div></div></div>
-    <div class="foot">版本 2.9（🗾 日本行每日 10/25・10/26・10/27・10/28・10/29＋照片單字例句＋單字小截圖＋🧩 照片整句拆解＋🧩 整句聽力・大截圖・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
+    <div class="foot">版本 3.0（🧩 整句細拆解：逐字編號步驟＋直譯＋第 1–12 課簡單說法；🗾 日本行每日 10/25・10/26・10/27・10/28・10/29＋照片單字例句＋單字小截圖＋🧩 照片整句拆解＋🧩 整句聽力・大截圖・新配色、聽力優先書本式排版、🗣 開口練習、🔍 搜尋、📝 複習清單）・資料只存在本裝置。錄音只在本機播放，不會上傳。</div><div class="row" style="margin-top:10px"><button class="btn" id="cl">完成</button></div>`;
   $('#sheet').classList.remove('hidden'); $('#ci').innerHTML = await cacheStatus();
   document.querySelectorAll('[data-kana]').forEach(b => b.onclick = () => { S.showKana = b.dataset.kana==='1'; save(); openSettings(); route(true); });
   document.querySelectorAll('[data-ro]').forEach(b => b.onclick = () => { S.showRomaji = b.dataset.ro==='1'; save(); openSettings(); route(true); });

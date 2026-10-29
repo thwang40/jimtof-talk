@@ -311,7 +311,13 @@ details summary{cursor:pointer;font-weight:600;padding:6px 0}
 .cut{font-size:12.5px;color:#8a4b00;margin-top:4px}
 .bd{margin-top:6px;padding:6px 8px;border-radius:8px;background:#f6f1e7;font-size:13.5px;line-height:1.55}
 .bd .bdh{font-weight:700;color:#6b3d00;margin-bottom:2px}
-.bd ul{margin:0;padding-left:1.1em}.bd li{margin:2px 0}
+.bd ul,.bd ol{margin:4px 0 2px;padding-left:1.5em}.bd li{margin:4px 0}.bd li b{color:#6b3d00}
+.bd>summary{cursor:pointer;list-style-position:inside;padding:2px 0}
+.bd[open]>summary{margin-bottom:2px;border-bottom:1px dashed #d9c9a8;padding-bottom:4px}
+.bdl{margin:4px 0}.bdl b{color:#6b3d00}
+.bde{margin-top:6px;padding:6px 8px;border-radius:8px;background:#fff;border:1px solid #e8dcc4}
+.bde>b{color:#2f5d2f;font-size:13px}.bde .alt{display:flex;gap:8px;align-items:flex-start;margin-top:4px}
+.bde .ja{font-size:15px}.bde .kana{font-size:12.5px;color:#777}.bde .zh{font-size:13px}
 @media(max-width:600px){
   .qx .srow.prow{grid-template-columns:1.6em minmax(0,1fr)}
   .qx .srow.prow .snum{grid-column:1;grid-row:1}

@@ -61,13 +61,15 @@ def build():
         if c.get('day'):
             D = c['day']; n = 0; scenes = []
             QS = PHR_D.get(c['id'], []); QW = {w: qi for qi, q in enumerate(QS) for w in q['w']}
-            qs = [dict(id=f"{c['id']}q{qi}", ja=q['ja'], kana=q['kana'], ro=q.get('ro') or rj(q['kana']), zh=q['zh'], bd=q['bd'], cut=q.get('cut', ''), ws=q['w']) for qi, q in enumerate(QS)]
+            qs = [dict(id=f"{c['id']}q{qi}", ja=q['ja'], kana=q['kana'], ro=q.get('ro') or rj(q['kana']), zh=q['zh'], bd=q['bd'], lit=q.get('lit', ''), easy=(dict(ja=q['easy'][0], kana=q['easy'][1], zh=q['easy'][2], a=f"{c['id']}q{qi}e") if q.get('easy') else None), cut=q.get('cut', ''), ws=q['w']) for qi, q in enumerate(QS)]
             for qi, q in enumerate(QS):   # 🧩 整句截圖（tools/crops.py 產生 img/<day>/q/<id>.webp）
                 f = os.path.join(ROOT, 'img', c['id'], 'q', qs[qi]['id'] + '.webp')
                 if os.path.exists(f):
                     qs[qi]['th'] = f"img/{c['id']}/q/{qs[qi]['id']}.webp?v=" + hashlib.md5(open(f, 'rb').read()).hexdigest()[:8]
                     ph = qphoto(q, D.get('crops', {})); qs[qi]['thc'] = dict(i for sc in D['scenes'] for i in sc['imgs']).get(ph, '')
             for qi, q in enumerate(QS): lines_all.append(dict(id=f"{c['id']}q{qi}", ja=q.get('say', q['ja']), kana=q['kana'], v='f'))
+            for qi, q in enumerate(QS):   # 「用第 1–12 課可以這樣說」的簡單說法音檔 <qid>e
+                if q.get('easy'): lines_all.append(dict(id=f"{c['id']}q{qi}e", ja=q['easy'][0], kana=q['easy'][1], v='f'))
             _allw = {w[0] for sc in D['scenes'] for w in sc['words']}
             assert all(w in _allw for q in QS for w in q['w']), ('整句的單字要跟 DAYS 一樣', [w for q in QS for w in q['w'] if w not in _allw])
             for sc in D['scenes']:
